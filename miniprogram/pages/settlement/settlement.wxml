@@ -1,0 +1,42 @@
+<!-- pages/settlement/settlement.wxml -->
+<view class="container">
+  <text class="title">游戏结算</text>
+
+  <view wx:if="{{loading}}" class="loading">加载中...</view>
+
+  <view wx:else class="settlement-list">
+    <view wx:for="{{settlements}}" wx:key="openid"
+      class="settlement-item card {{item.pointsDelta >= 0 ? 'winner' : ''}} {{item.isMe ? 'me' : ''}}">
+
+      <view class="player-info">
+        <image wx:if="{{item.avatar}}" class="avatar" src="{{item.avatar}}" mode="aspectFill" />
+        <view wx:else class="avatar-placeholder">{{item.nickname[0]}}</view>
+        <view class="name-area">
+          <text class="player-name">{{item.nickname}}{{item.isMe ? '（我）' : ''}}</text>
+          <text class="chips-delta {{item.chipsDelta >= 0 ? 'positive' : 'negative'}}">
+            筹码 {{item.chipsDeltaDisplay}}
+          </text>
+        </view>
+        <view wx:if="{{item.pointsDelta > 0}}" class="winner-badge">🏆</view>
+      </view>
+
+      <view class="delta-area">
+        <text class="points-delta {{item.pointsDelta >= 0 ? 'points-positive' : 'points-negative'}}">
+          积分 {{item.pointsDeltaDisplay}}
+        </text>
+        <text wx:if="{{item.isMe && item.pointsAfter !== undefined}}" class="points-after">
+          当前积分: {{item.pointsAfter}}
+        </text>
+      </view>
+
+    </view>
+
+    <!-- 零和校验展示 -->
+    <view class="zero-sum-check">
+      <text class="zero-sum-text">积分总计: {{totalPointsDelta}}</text>
+    </view>
+  </view>
+
+  <button class="btn-primary home-btn" bindtap="onHome">返回大厅</button>
+  <view class="safe-bottom"></view>
+</view>

@@ -1,16 +1,30 @@
 {
   "pages": [
-    "pages/index/index",
-    "pages/example/index"
+    "pages/home/home",
+    "pages/login/login",
+    "pages/room/create/create",
+    "pages/room/join/join",
+    "pages/room/lobby/lobby",
+    "pages/game/game",
+    "pages/settlement/settlement",
+    "pages/ai-practice/ai-practice",
+    "pages/profile/profile"
   ],
   "window": {
-    "backgroundColor": "#F6F6F6",
     "backgroundTextStyle": "light",
-    "navigationBarBackgroundColor": "#F6F6F6",
-    "navigationBarTitleText": "云开发 QuickStart",
-    "navigationBarTextStyle": "black"
+    "navigationBarBackgroundColor": "#1a1a2e",
+    "navigationBarTitleText": "德州扑克",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#1a1a2e"
   },
-  "sitemapLocation": "sitemap.json",
   "style": "v2",
-  "lazyCodeLoading": "requiredComponents"
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents",
+  "requiredBackgroundModes": [],
+  "permission": {
+    "scope.userInfo": {
+      "desc": "用于展示您的头像和昵称"
+    }
+  },
+  "usingComponents": {}
 }

@@ -1,0 +1,61 @@
+/* pages/room/create/create.wxss */
+.container { padding: 40rpx 32rpx; }
+
+.form { margin-bottom: 48rpx; }
+
+.form-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 28rpx 0;
+}
+
+.label { font-size: 30rpx; color: rgba(255,255,255,0.8); }
+
+.input {
+  text-align: right;
+  font-size: 30rpx;
+  color: #ffd700;
+  width: 200rpx;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8rpx;
+  padding: 8rpx 16rpx;
+}
+
+.value-text { font-size: 28rpx; color: rgba(255,255,255,0.5); }
+
+.divider { height: 1rpx; background: rgba(255,255,255,0.08); }
+
+/* picker */
+.picker-value {
+  font-size: 30rpx; color: #ffd700;
+  display: flex; align-items: center; gap: 8rpx;
+}
+.picker-arrow { font-size: 22rpx; color: rgba(255,215,0,0.6); }
+
+/* 积分换算比例 */
+.section-title {
+  font-size: 26rpx; color: rgba(255,255,255,0.5);
+  padding-top: 24rpx; padding-bottom: 12rpx;
+}
+.ratio-row {
+  display: flex; align-items: center; gap: 12rpx; padding-bottom: 16rpx;
+}
+.ratio-input {
+  flex: 1; text-align: center;
+  font-size: 30rpx; color: #ffd700;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8rpx; padding: 8rpx 0;
+  border: 1rpx solid rgba(255,215,0,0.2);
+}
+.ratio-label { font-size: 26rpx; color: rgba(255,255,255,0.6); white-space: nowrap; }
+.ratio-eq { font-size: 28rpx; color: rgba(255,255,255,0.4); }
+
+.cost-tip {
+  margin-top: 8rpx; padding: 16rpx;
+  background: rgba(255,215,0,0.1);
+  border-radius: 12rpx;
+  font-size: 26rpx; color: #ffd700; text-align: center;
+}
+
+.create-btn { width: 100%; padding: 32rpx 0; font-size: 36rpx; }

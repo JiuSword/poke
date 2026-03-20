@@ -1,0 +1,193 @@
+<!-- pages/game/game.wxml -->
+<view class="game-root">
+
+  <!-- 本手结算浮层 -->
+  <view class="hand-result-overlay" wx:if="{{showHandResult}}">
+    <view class="hand-result-card">
+      <text class="hand-result-title">本手结果</text>
+      <view wx:for="{{handWinners}}" wx:key="openid" class="hand-result-item">
+        <text class="hr-name">🏆 {{item.nickname || item.openid}}</text>
+        <text class="hr-chips">+{{item.potShare}} 筹码</text>
+        <text wx:if="{{item.handRank}}" class="hr-rank">{{item.handRank}}</text>
+        <text wx:if="{{item.chipsAfter !== undefined}}" class="hr-after">持有: {{item.chipsAfter}}</text>
+      </view>
+      <text class="hr-tip">5秒后开始下一手...</text>
+    </view>
+  </view>
+
+  <!-- 结算中遮罩（点击结束游戏后立即全屏覆盖） -->
+  <view class="settling-overlay" wx:if="{{isSettling}}">
+    <view class="settling-spinner"></view>
+    <text class="settling-text">结算中...</text>
+  </view>
+
+  <!-- 暂停遮罩 -->
+  <view class="pause-overlay" wx:if="{{isPaused}}">
+    <text class="pause-overlay-text">⏸ 游戏暂停中</text>
+    <text wx:if="{{pausedBy === myOpenid}}" class="pause-resume-hint" bindtap="onTogglePause">点击继续游戏</text>
+    <text wx:else class="pause-resume-hint">等待对方恢复游戏...</text>
+  </view>
+
+  <!-- 顶部栏 -->
+  <view class="top-bar" style="padding-top:{{statusBarHeight}}px;">
+    <view class="top-left">
+      <view class="room-tag">
+        <text class="room-tag-label">房间号</text>
+        <text class="room-tag-code">{{roomCode}}</text>
+      </view>
+      <view class="top-icon-btns">
+        <view class="icon-btn pause-btn {{isPaused ? 'paused' : ''}}" bindtap="onTogglePause">
+          <text class="icon-text">{{isPaused ? '▶' : '⏸'}}</text>
+        </view>
+        <view class="icon-btn exit-btn" bindtap="onExitOrEnd">
+          <text class="icon-text">⏻</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 牌桌椭圆 -->
+  <view class="table-wrapper">
+    <view class="table-oval">
+
+      <!-- 底池 + 公共牌 居中 -->
+      <view class="board-center">
+        <view class="pot-row">
+          <text class="pot-label">底池</text>
+          <text class="pot-value">{{pot}}</text>
+          <view wx:if="{{currentBet > 0}}" class="call-badge">
+            <text class="call-badge-text">跟注 {{currentBet}}</text>
+          </view>
+        </view>
+        <view class="community-cards">
+          <view wx:for="{{communityCards}}" wx:key="index"
+            class="board-card {{index >= prevCardCount ? 'card-reveal' : ''}}"
+            style="color:{{item.color}}; animation-delay:{{(index - prevCardCount) * 150}}ms">
+            <text class="bc-rank">{{item.rank}}</text>
+            <text class="bc-suit">{{item.symbol}}</text>
+          </view>
+          <view wx:for="{{5 - communityCards.length}}" wx:key="index" class="board-card empty" />
+        </view>
+        <text wx:if="{{phase}}" class="phase-label">{{phase}}</text>
+        <!-- 最优牌型标签（居中展示在公共牌下方） -->
+        <view wx:if="{{myBestHand}}" class="best-hand-badge">
+          <text class="best-hand-text">{{myBestHand}}</text>
+        </view>
+      </view>
+
+      <!-- 对手玩家节点（绝对定位，围绕牌桌） -->
+      <block wx:for="{{seats}}" wx:key="seatIndex" wx:if="{{item.openid && item.seatIndex !== mySeatIndex}}">
+        <view class="player-node seat-pos-{{item.seatIndex}} {{item.isCurrentActor ? 'acting' : ''}} {{item.status === 'folded' ? 'folded' : ''}}">
+          <view class="player-card-wrap">
+            <view class="player-avatar-box">
+              <image wx:if="{{item.avatar}}" class="p-avatar" src="{{item.avatar}}" mode="aspectFill" />
+              <view wx:else class="p-avatar p-avatar-placeholder">{{item.nickname[0]}}</view>
+              <view wx:if="{{item.isDealer}}" class="dealer-chip">D</view>
+            </view>
+            <view class="player-info-box">
+              <text class="p-name">{{item.nickname}}</text>
+              <text class="p-chips">{{item.chips}}</text>
+            </view>
+          </view>
+          <!-- 背面手牌 -->
+          <view wx:if="{{item.hasCards && item.status !== 'folded'}}" class="opp-hole-cards">
+            <view class="hole-back" /><view class="hole-back" />
+          </view>
+          <!-- 下注气泡 -->
+          <view wx:if="{{item.betInPhase > 0}}" class="bet-bubble">{{item.betInPhase}}</view>
+          <!-- 弃牌 -->
+          <text wx:if="{{item.status === 'folded'}}" class="folded-tag">弃牌</text>
+          <!-- 行动高亮环 -->
+          <view wx:if="{{item.isCurrentActor}}" class="acting-glow" />
+          <!-- SB/BB 标记 -->
+          <view wx:if="{{item.isSmallBlind}}" class="blind-tag sb-tag">SB</view>
+          <view wx:if="{{item.isBigBlind}}" class="blind-tag bb-tag">BB</view>
+        </view>
+      </block>
+
+    </view>
+  </view>
+
+  <!-- 我的区域 -->
+  <view class="my-zone" style="padding-bottom:calc(16rpx + {{safeAreaBottom}}px);">
+
+    <!-- 手牌 + 信息 -->
+    <view class="my-row">
+      <view class="my-hand">
+        <view wx:for="{{myCardsParsed}}" wx:key="index"
+          class="my-card" style="color:{{item.color}}">
+          <text class="mc-rank">{{item.rank}}</text>
+          <text class="mc-suit">{{item.symbol}}</text>
+        </view>
+        <view wx:if="{{myCardsParsed.length === 0}}" class="my-card empty-card" />
+        <view wx:if="{{myCardsParsed.length === 0}}" class="my-card empty-card" />
+      </view>
+      <view class="my-meta">
+        <text class="my-chips-val">{{myChips}}</text>
+        <text wx:if="{{myRefillCost > 0}}" class="my-refill-hint">-{{myRefillCost}} 积分</text>
+        <view wx:if="{{isMyTurn}}" class="countdown-pill">{{countdown}}s</view>
+      </view>
+    </view>
+
+    <!-- 操作面板（暂停时不可用） -->
+    <view wx:if="{{isMyTurn && !isPaused && phase !== 'ended' && phase !== 'hand_settled' && phase !== 'game_over'}}" class="action-zone">
+
+      <!-- 加注展开面板 -->
+      <view wx:if="{{showRaiseInput}}" class="raise-panel">
+        <!-- 金额显示 + 输入框 -->
+        <view class="raise-amount-row">
+          <text class="raise-amount-label">{{isAllinMode ? 'All In' : '加注'}}</text>
+          <input class="raise-amount-input" type="number" value="{{raiseAmount}}" bindinput="onRaiseAmountInput" />
+          <button class="raise-confirm-btn {{isAllinMode ? 'allin-confirm' : ''}}" bindtap="onRaise">
+            {{isAllinMode ? '确认 Allin' : '确认加注'}}
+          </button>
+        </view>
+
+        <!-- 滑动条 -->
+        <view class="slider-wrap">
+          <text class="slider-edge-label">{{sliderMin}}</text>
+          <slider
+            class="raise-slider"
+            min="{{sliderMin}}"
+            max="{{sliderMax}}"
+            value="{{raiseAmount}}"
+            step="1"
+            activeColor="#e67e22"
+            backgroundColor="rgba(255,255,255,0.15)"
+            block-color="#ffd700"
+            block-size="24"
+            bindchange="onSliderChange"
+            bindchanging="onSliderChange"
+          />
+          <text class="slider-edge-label">{{sliderMax}}</text>
+        </view>
+
+        <!-- 快捷筹码按钮 -->
+        <view class="chip-shortcuts">
+          <view class="chip chip-w" bindtap="onQuickRaise" data-amount="{{sliderMin}}">MIN</view>
+          <view class="chip chip-b" bindtap="onQuickRaise" data-amount="{{pot}}">POT</view>
+          <view class="chip chip-p" bindtap="onQuickRaise" data-amount="{{pot * 0.75 | 0}}">3/4</view>
+          <view class="chip chip-r" bindtap="onQuickRaise" data-amount="{{pot * 0.5 | 0}}">1/2</view>
+          <view class="chip chip-k" bindtap="onQuickRaise" data-amount="{{sliderMax}}">MAX</view>
+        </view>
+      </view>
+
+      <!-- 主按钮行：FOLD / CALL / RAISE -->
+      <view class="main-btns">
+        <button class="act-btn fold-btn" bindtap="onFold" disabled="{{acting}}">弃牌</button>
+        <button class="act-btn {{callIsAllin ? 'allin-call-btn' : 'call-btn'}}" bindtap="onCheckCall" disabled="{{acting}}">
+          {{currentBet > 0 ? (callIsAllin ? 'All In' : '跟注') : '过牌'}}
+        </button>
+        <button
+          class="act-btn {{!canRaise ? 'raise-disabled' : (showRaiseInput ? (isAllinMode ? 'allin-confirm-btn' : 'raise-confirm-active') : 'raise-btn')}}"
+          bindtap="onToggleRaiseInput"
+          disabled="{{acting || !canRaise}}">
+          {{showRaiseInput ? (isAllinMode ? '✓ All In' : '✓ 确认加注 ' + raiseAmount) : '加注' + (raiseAmount > 0 ? ' ' + raiseAmount : '')}}
+        </button>
+      </view>
+
+    </view>
+
+  </view>
+
+</view>

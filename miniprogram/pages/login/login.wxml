@@ -1,0 +1,15 @@
+<!-- pages/login/login.wxml -->
+<view class="container">
+  <view class="logo-area">
+    <text class="logo-icon">🃏</text>
+    <text class="logo-title">德州扑克</text>
+    <text class="logo-sub">好友联机 · 娱乐对局</text>
+  </view>
+
+  <view class="login-area">
+    <button class="btn-primary login-btn" bindtap="onLogin" loading="{{loading}}" disabled="{{loading}}">
+      微信一键登录
+    </button>
+    <text class="tip-text">纯娱乐，不涉及真实货币</text>
+  </view>
+</view>

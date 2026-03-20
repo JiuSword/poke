@@ -1,0 +1,97 @@
+/* pages/home/home.wxss */
+.container {
+  padding: 40rpx 32rpx;
+}
+
+.loading-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+.loading-text {
+  font-size: 30rpx;
+  color: rgba(255,255,255,0.5);
+}
+
+.user-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 48rpx;
+}
+
+.avatar {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  margin-right: 24rpx;
+  border: 3rpx solid rgba(255,215,0,0.5);
+}
+
+.user-info {
+  flex: 1;
+}
+
+.nickname {
+  font-size: 34rpx;
+  font-weight: bold;
+  color: #fff;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.points-row {
+  display: flex;
+  align-items: center;
+}
+
+.points-label {
+  font-size: 24rpx;
+  color: rgba(255,255,255,0.5);
+  margin-right: 12rpx;
+}
+
+.points-value {
+  font-size: 32rpx;
+  font-weight: bold;
+}
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24rpx;
+}
+
+.menu-item {
+  background: rgba(255,255,255,0.08);
+  border-radius: 24rpx;
+  padding: 40rpx 24rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 1rpx solid rgba(255,255,255,0.1);
+  active-background: rgba(255,255,255,0.15);
+}
+
+.menu-item:active {
+  background: rgba(255,255,255,0.15);
+}
+
+.menu-icon {
+  font-size: 72rpx;
+  margin-bottom: 16rpx;
+}
+
+.menu-label {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 8rpx;
+}
+
+.menu-desc {
+  font-size: 24rpx;
+  color: rgba(255,255,255,0.5);
+}

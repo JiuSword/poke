@@ -1,0 +1,54 @@
+<!-- pages/room/create/create.wxml -->
+<view class="container">
+  <view class="form card">
+
+    <view class="form-item">
+      <text class="label">小盲注（筹码）</text>
+      <input class="input" type="number" value="{{smallBlind}}" bindinput="onSmallBlindChange" placeholder="10" />
+    </view>
+    <view class="divider" />
+
+    <view class="form-item">
+      <text class="label">最大玩家数（2~9）</text>
+      <input class="input" type="number" value="{{maxPlayers}}" bindinput="onMaxPlayersChange" placeholder="6" />
+    </view>
+    <view class="divider" />
+
+    <view class="form-item">
+      <text class="label">入座筹码数</text>
+      <input class="input" type="number" value="{{buyInChips}}" bindinput="onBuyInChange" placeholder="1000" />
+    </view>
+    <view class="divider" />
+
+    <!-- 操作倒计时 -->
+    <view class="form-item">
+      <text class="label">操作倒计时</text>
+      <picker mode="selector" range="{{actionTimeoutOptions}}" value="{{actionTimeoutIndex}}" bindchange="onActionTimeoutChange">
+        <view class="picker-value">
+          {{actionTimeoutOptions[actionTimeoutIndex]}} <text class="picker-arrow">▾</text>
+        </view>
+      </picker>
+    </view>
+    <view class="divider" />
+
+    <!-- 积分换算比例 -->
+    <view class="section-title">积分换算比例</view>
+    <view class="ratio-row">
+      <input class="ratio-input" type="number" value="{{pointsIn}}" bindinput="onPointsInChange" placeholder="100" />
+      <text class="ratio-label">积分</text>
+      <text class="ratio-eq">=</text>
+      <input class="ratio-input" type="number" value="{{chipsOut}}" bindinput="onChipsOutChange" placeholder="1000" />
+      <text class="ratio-label">筹码</text>
+    </view>
+
+    <view class="cost-tip">
+      入座消耗积分：{{costPoints}} 分
+    </view>
+
+  </view>
+
+  <button class="btn-primary create-btn" bindtap="onCreateRoom" loading="{{loading}}">
+    创建房间
+  </button>
+  <view class="safe-bottom"></view>
+</view>

@@ -1,0 +1,99 @@
+<!-- pages/profile/profile.wxml -->
+
+<!-- 昵称编辑弹窗 -->
+<view wx:if="{{showNicknameEdit}}" class="edit-overlay" catchtap="onCancelEdit">
+  <view class="edit-modal" catchtap="">
+    <text class="edit-title">修改昵称</text>
+    <input
+      class="edit-input"
+      value="{{nicknameInput}}"
+      bindinput="onNicknameInput"
+      placeholder="请输入新昵称"
+      placeholder-class="edit-placeholder"
+      maxlength="20"
+      focus="{{showNicknameEdit}}"
+      adjust-position="{{true}}"
+      cursor-spacing="20"
+    />
+    <text class="edit-count">{{nicknameInput.length}}/20</text>
+    <view class="edit-actions">
+      <button class="edit-cancel" bindtap="onCancelEdit">取消</button>
+      <button class="edit-confirm btn-primary" bindtap="onConfirmEdit" loading="{{editLoading}}">确认</button>
+    </view>
+  </view>
+</view>
+
+<scroll-view scroll-y class="container" bindscrolltolower="onLoadMore">
+  <!-- 用户信息 -->
+  <view class="user-section card">
+    <image class="avatar" src="{{userInfo.avatar}}" mode="aspectFill" />
+    <view class="user-info">
+      <view class="nickname-row">
+        <text class="nickname">{{userInfo.nickname}}</text>
+        <text class="edit-btn" bindtap="onEditNickname">✏️</text>
+      </view>
+      <text class="points points-text">积分: {{userInfo.points}}</text>
+    </view>
+  </view>
+
+  <!-- 战绩统计 -->
+  <view class="stats-section card">
+    <text class="section-title">历史战绩</text>
+    <view class="stats-grid">
+      <view class="stat-item">
+        <text class="stat-value">{{stats.totalGames}}</text>
+        <text class="stat-label">总对局</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-value">{{stats.totalWins}}</text>
+        <text class="stat-label">胜场</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-value">{{stats.winRate}}</text>
+        <text class="stat-label">胜率</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-value">{{stats.maxPotWon}}</text>
+        <text class="stat-label">最大赢池</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 积分记录 -->
+  <view class="records-section">
+    <text class="section-title">积分记录</text>
+
+    <view wx:if="{{loading}}" class="loading-text">加载中...</view>
+
+    <view wx:for="{{records}}" wx:key="_id" class="record-item card" bindtap="onToggleExpand" data-id="{{item._id}}">
+      <view class="record-header">
+        <view class="record-left">
+          <text class="record-time">{{item.timeDisplay}}</text>
+          <text class="record-room">房间 {{item.roomId}}</text>
+        </view>
+        <view class="record-right">
+          <text class="record-delta {{item.pointsDelta >= 0 ? 'points-positive' : 'points-negative'}}">
+            {{item.pointsDeltaDisplay}}
+          </text>
+          <text class="record-after">→ {{item.pointsAfter}}</text>
+        </view>
+      </view>
+
+      <!-- 展开明细 -->
+      <view wx:if="{{expandedIds[item._id]}}" class="record-detail">
+        <view class="detail-row">
+          <text>筹码变化: {{item.chipsDelta >= 0 ? '+' : ''}}{{item.chipsDelta}}</text>
+          <text wx:if="{{item.handRank}}">牌型: {{item.handRank}}</text>
+        </view>
+        <view wx:for="{{item.opponents}}" wx:key="openid" class="opponent-row">
+          <text>{{item.nickname}}: {{item.chipsDelta >= 0 ? '+' : ''}}{{item.chipsDelta}} 筹码</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{loadingMore}}" class="loading-text">加载更多...</view>
+    <view wx:if="{{!hasMore && records.length > 0}}" class="no-more">没有更多记录了</view>
+    <view wx:if="{{!loading && records.length === 0}}" class="empty-text">暂无对局记录</view>
+  </view>
+  <view class="safe-bottom"></view>
+</scroll-view>

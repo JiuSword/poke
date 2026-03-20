@@ -1,0 +1,41 @@
+<!-- pages/room/lobby/lobby.wxml -->
+<view class="container">
+  <!-- 房间号 -->
+  <view class="room-code-card card">
+    <text class="room-label">房间号</text>
+    <text class="room-code">{{roomCode}}</text>
+    <button class="share-btn" open-type="share">分享给好友</button>
+  </view>
+
+  <!-- 座位列表 -->
+  <view class="seats-grid">
+    <view wx:for="{{seats}}" wx:key="seatIndex" class="seat-item {{item.openid ? 'occupied' : 'empty'}}">
+      <block wx:if="{{item.openid}}">
+        <image class="seat-avatar" src="{{item.avatar}}" mode="aspectFill" />
+        <text class="seat-name">{{item.nickname}}</text>
+        <text class="seat-status {{item.status === 'ready' ? 'ready' : ''}}">
+          {{item.status === 'ready' ? '已准备' : '未准备'}}
+        </text>
+      </block>
+      <block wx:else>
+        <text class="empty-icon">+</text>
+        <text class="empty-text">等待加入</text>
+      </block>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="actions">
+    <block wx:if="{{isHost}}">
+      <button class="btn-primary" bindtap="onStartGame" loading="{{loading}}">开始游戏</button>
+      <button class="btn-danger" bindtap="onDismiss">解散房间</button>
+    </block>
+    <block wx:else>
+      <button class="btn-ready {{isReady ? 'ready-active' : ''}}" bindtap="onSetReady" hover-class="btn-hover">
+        {{isReady ? '已准备' : '准备'}}
+      </button>
+      <button class="btn-secondary" bindtap="onLeave">离开</button>
+    </block>
+  </view>
+  <view class="safe-bottom"></view>
+</view>

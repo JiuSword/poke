@@ -1,0 +1,56 @@
+/* pages/room/lobby/lobby.wxss */
+.container { padding: 32rpx; }
+
+.room-code-card { text-align: center; margin-bottom: 32rpx; }
+.room-label { font-size: 26rpx; color: rgba(255,255,255,0.5); display: block; margin-bottom: 8rpx; }
+.room-code { font-size: 72rpx; font-weight: bold; color: #ffd700; letter-spacing: 16rpx; display: block; margin-bottom: 24rpx; }
+.share-btn { background: rgba(255,255,255,0.1); color: #fff; border: 1rpx solid rgba(255,255,255,0.3); border-radius: 40rpx; font-size: 28rpx; padding: 12rpx 40rpx; }
+
+.seats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20rpx; margin-bottom: 40rpx; }
+
+.seat-item {
+  background: rgba(255,255,255,0.06);
+  border-radius: 16rpx;
+  padding: 24rpx 16rpx;
+  display: flex; flex-direction: column; align-items: center;
+  border: 1rpx solid rgba(255,255,255,0.08);
+  min-height: 180rpx;
+  justify-content: center;
+}
+
+.seat-item.occupied { border-color: rgba(255,215,0,0.3); }
+
+.seat-avatar { width: 72rpx; height: 72rpx; border-radius: 50%; margin-bottom: 10rpx; }
+.seat-name { font-size: 24rpx; color: #fff; margin-bottom: 6rpx; text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 100%; }
+.seat-status { font-size: 22rpx; color: rgba(255,255,255,0.4); }
+.seat-status.ready { color: #4caf50; }
+
+.empty-icon { font-size: 48rpx; color: rgba(255,255,255,0.2); margin-bottom: 8rpx; }
+.empty-text { font-size: 22rpx; color: rgba(255,255,255,0.2); }
+
+.actions { display: flex; flex-direction: column; gap: 20rpx; }
+.actions button { padding: 28rpx 0; font-size: 32rpx; }
+
+/* 准备按钮：默认未准备 */
+.btn-ready {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  border: 2rpx solid rgba(255,255,255,0.3);
+  border-radius: 16rpx;
+  font-size: 32rpx;
+  font-weight: bold;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+/* 已准备状态：绿色 */
+.btn-ready.ready-active {
+  background: #4caf50;
+  border-color: #388e3c;
+  color: #fff;
+}
+
+/* 点击反馈 */
+.btn-hover {
+  background: rgba(0,0,0,0.3) !important;
+  opacity: 0.75;
+}

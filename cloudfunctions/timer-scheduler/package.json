@@ -1,0 +1,15 @@
+{
+  "name": "timer-scheduler",
+  "version": "1.0.0",
+  "main": "index.js",
+  "triggers": [
+    {
+      "name": "timer",
+      "type": "timer",
+      "config": "* * * * *"
+    }
+  ],
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

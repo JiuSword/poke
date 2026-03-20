@@ -1,0 +1,12 @@
+<!-- pages/room/join/join.wxml -->
+<view class="container">
+  <view class="join-card card">
+    <text class="title">输入房间号</text>
+    <input class="room-input" type="number" maxlength="6" value="{{roomCode}}"
+      bindinput="onInput" placeholder="请输入6位房间号" placeholder-class="placeholder" />
+  </view>
+  <button class="btn-primary join-btn" bindtap="onJoin" loading="{{loading}}" disabled="{{roomCode.length !== 6}}">
+    加入房间
+  </button>
+  <view class="safe-bottom"></view>
+</view>

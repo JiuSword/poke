@@ -1,27 +1,78 @@
-/**app.wxss**/
+/* app.wxss */
+page {
+  background-color: #1a1a2e;
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+  box-sizing: border-box;
+  /* 底部安全区（iPhone X+ 等刘海屏） */
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 底部固定操作区安全区占位 */
+.safe-bottom {
+  height: constant(safe-area-inset-bottom);
+  height: env(safe-area-inset-bottom);
+}
+
 .container {
   display: flex;
   flex-direction: column;
   align-items: center;
+  min-height: 100vh;
+  padding: 20rpx;
   box-sizing: border-box;
-} 
-
-button {
-  background: initial;
 }
 
-button:focus{
-  outline: 0;
-}
-
-button::after{
+/* 通用按钮 */
+.btn-primary {
+  background: linear-gradient(135deg, #e94560, #c73652);
+  color: #fff;
   border: none;
+  border-radius: 50rpx;
+  padding: 24rpx 60rpx;
+  font-size: 32rpx;
+  font-weight: bold;
+  box-shadow: 0 8rpx 24rpx rgba(233, 69, 96, 0.4);
 }
 
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 2rpx solid rgba(255, 255, 255, 0.3);
+  border-radius: 50rpx;
+  padding: 24rpx 60rpx;
+  font-size: 32rpx;
+}
 
-page {
-  background: #f6f6f6;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
+.btn-danger {
+  background: linear-gradient(135deg, #ff4444, #cc0000);
+  color: #fff;
+  border: none;
+  border-radius: 50rpx;
+  padding: 24rpx 60rpx;
+  font-size: 32rpx;
+}
+
+/* 卡片容器 */
+.card {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 24rpx;
+  padding: 32rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+/* 积分显示 */
+.points-text {
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.points-positive {
+  color: #4caf50;
+}
+
+.points-negative {
+  color: #f44336;
 }

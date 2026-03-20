@@ -1,0 +1,159 @@
+<!-- pages/ai-practice/ai-practice.wxml -->
+<view class="container">
+
+  <!-- 配置界面 -->
+  <view wx:if="{{!started}}" class="config-area">
+    <text class="config-title">AI 练习</text>
+    <view class="config-card card">
+      <view class="config-row">
+        <text class="config-label">AI 难度</text>
+        <picker mode="selector" range="{{difficultyOptions}}" value="{{difficultyIndex}}" bindchange="onDifficultyChange">
+          <view class="picker-val">{{difficultyOptions[difficultyIndex]}} ▾</view>
+        </picker>
+      </view>
+      <view class="divider" />
+      <view class="config-row">
+        <text class="config-label">AI 数量</text>
+        <picker mode="selector" range="{{aiCountOptions}}" value="{{aiCount - 1}}" bindchange="onAiCountChange">
+          <view class="picker-val">{{aiCountOptions[aiCount - 1]}} ▾</view>
+        </picker>
+      </view>
+    </view>
+    <text class="tip">练习模式不影响账号积分</text>
+    <button class="btn-primary start-btn" bindtap="onStart" loading="{{loading}}">开始练习</button>
+  </view>
+
+  <!-- 游戏界面 -->
+  <view wx:else class="game-area">
+
+    <!-- 顶部栏 -->
+    <view class="top-bar">
+      <text class="mode-tag">AI 练习</text>
+      <button class="exit-btn" bindtap="onExit">退出</button>
+    </view>
+
+    <!-- AI 玩家 -->
+    <view class="ai-players">
+      <view wx:for="{{playerStates}}" wx:key="id" wx:if="{{item.isAI}}"
+        class="ai-seat {{item.status === 'folded' ? 'folded' : ''}}">
+        <text class="ai-icon">🤖</text>
+        <text class="ai-name">AI {{index}}</text>
+        <text class="ai-chips">{{item.chips}}</text>
+        <view class="ai-cards">
+          <block wx:if="{{phase === 'ended' && item.status !== 'folded'}}">
+            <view wx:for="{{item.holeCards}}" wx:key="index" wx:for-item="card" class="mini-card">{{card}}</view>
+          </block>
+          <block wx:elif="{{item.status !== 'folded'}}">
+            <view class="card-back-mini" /><view class="card-back-mini" />
+          </block>
+        </view>
+        <text wx:if="{{item.status === 'folded'}}" class="folded-tag">弃牌</text>
+        <text wx:if="{{item.betInPhase > 0}}" class="bet-tag">下注 {{item.betInPhase}}</text>
+      </view>
+    </view>
+
+    <!-- 公共牌 + 底池 -->
+    <view class="board-area">
+      <view class="pot-row">
+        <text class="pot-text">底池 {{pot}}</text>
+        <view wx:if="{{currentBet > 0}}" class="call-badge">
+          <text class="call-badge-text">跟注 {{currentBet}}</text>
+        </view>
+      </view>
+      <view class="community-cards">
+        <view wx:for="{{communityCards}}" wx:key="index" class="board-card" style="color:{{item.color}}">
+          <text class="c-rank">{{item.rank}}</text>
+          <text class="c-suit">{{item.symbol}}</text>
+        </view>
+        <view wx:for="{{5 - communityCards.length}}" wx:key="index" class="board-card placeholder" />
+      </view>
+      <!-- 最优牌型 -->
+      <view wx:if="{{myBestHand}}" class="best-hand-badge">
+        <text class="best-hand-text">{{myBestHand}}</text>
+      </view>
+      <text class="phase-tag">{{phase}}</text>
+    </view>
+
+    <!-- 结束结果浮层 -->
+    <view wx:if="{{phase === 'ended'}}" class="result-overlay">
+      <text class="result-title">本手结果</text>
+      <view wx:for="{{winners}}" wx:key="id" class="result-item">
+        <text class="result-name">{{item.id === 'player' ? '🏆 你赢了' : '🤖 AI 赢了'}}</text>
+        <text class="result-chips">+{{item.potShare}} 筹码</text>
+        <text wx:if="{{item.handRank}}" class="result-rank">{{item.handRank}}</text>
+      </view>
+      <text class="my-chips-after">你的筹码: {{myChips}}</text>
+      <view class="result-actions">
+        <button class="btn-primary result-btn" bindtap="onNewRound" loading="{{loading}}">再来一手</button>
+        <button class="btn-secondary result-btn" bindtap="onExit">退出</button>
+      </view>
+    </view>
+
+    <!-- 我的区域 -->
+    <view class="my-area" wx:if="{{phase !== 'ended'}}">
+      <view class="my-row">
+        <view class="my-hand">
+          <view wx:for="{{myCards}}" wx:key="index" class="my-card" style="color:{{item.color}}">
+            <text class="card-rank">{{item.rank}}</text>
+            <text class="card-suit">{{item.symbol}}</text>
+          </view>
+          <view wx:if="{{myCards.length === 0}}" class="my-card empty-card" />
+          <view wx:if="{{myCards.length === 0}}" class="my-card empty-card" />
+        </view>
+        <view class="my-meta">
+          <text class="my-chips-text">{{myChips}}</text>
+          <text wx:if="{{isMyTurn}}" class="my-turn-badge">你的回合</text>
+          <text wx:elif="{{phase !== 'ended'}}" class="waiting-tip">等待中...</text>
+        </view>
+      </view>
+
+      <view wx:if="{{isMyTurn}}" class="action-panel">
+
+        <!-- 加注展开面板 -->
+        <view wx:if="{{showRaiseInput}}" class="raise-panel">
+          <view class="raise-amount-row">
+            <text class="raise-amount-label">{{isAllinMode ? 'All In' : '加注'}}</text>
+            <input class="raise-amount-input" type="number" value="{{raiseAmount}}" bindinput="onRaiseInput" />
+            <button class="raise-confirm-btn {{isAllinMode ? 'allin-confirm' : ''}}" bindtap="onRaise">
+              {{isAllinMode ? '确认 Allin' : '确认加注'}}
+            </button>
+          </view>
+          <view class="slider-wrap">
+            <text class="slider-edge-label">{{sliderMin}}</text>
+            <slider
+              class="raise-slider"
+              min="{{sliderMin}}" max="{{sliderMax}}" value="{{raiseAmount}}" step="1"
+              activeColor="#e67e22" backgroundColor="rgba(255,255,255,0.15)"
+              block-color="#ffd700" block-size="24"
+              bindchange="onSliderChange" bindchanging="onSliderChange"
+            />
+            <text class="slider-edge-label right">{{sliderMax}}</text>
+          </view>
+          <view class="chip-shortcuts">
+            <view class="chip chip-w" bindtap="onQuickRaise" data-amount="{{sliderMin}}">MIN</view>
+            <view class="chip chip-b" bindtap="onQuickRaise" data-amount="{{pot}}">POT</view>
+            <view class="chip chip-p" bindtap="onQuickRaise" data-amount="{{pot * 0.75 | 0}}">3/4</view>
+            <view class="chip chip-r" bindtap="onQuickRaise" data-amount="{{pot * 0.5 | 0}}">1/2</view>
+            <view class="chip chip-k" bindtap="onQuickRaise" data-amount="{{sliderMax}}">MAX</view>
+          </view>
+        </view>
+
+        <!-- 主按钮行 -->
+        <view class="main-btns">
+          <button class="action-btn fold-btn" bindtap="onFold" disabled="{{acting}}">弃牌</button>
+          <button class="action-btn {{callIsAllin ? 'allin-call-btn' : 'call-btn'}}" bindtap="onCheckCall" disabled="{{acting}}">
+            {{currentBet > 0 ? (callIsAllin ? 'All In' : '跟注') : '过牌'}}
+          </button>
+          <button
+            class="action-btn {{!canRaise ? 'raise-disabled' : (showRaiseInput ? (isAllinMode ? 'allin-confirm-btn' : 'raise-confirm-active') : 'raise-btn')}}"
+            bindtap="onToggleRaise"
+            disabled="{{acting || !canRaise}}">
+            {{showRaiseInput ? (isAllinMode ? '✓ All In' : '✓ 确认加注 ' + raiseAmount) : '加注' + (raiseAmount > 0 ? ' ' + raiseAmount : '')}}
+          </button>
+        </view>
+
+      </view>
+    </view>
+
+  </view>
+</view>
