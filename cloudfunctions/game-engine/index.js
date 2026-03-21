@@ -26,6 +26,50 @@ async function initRound(event) {
   const room = roomRes.data
   if (!room) return { code: 404, msg: '房间不存在' }
 
+  // 处理 pendingAction：stand=离座成观战者，sit=已在座位无需额外处理
+  const spectators = room.spectators || []
+  const pendingUpdates = {}
+  let newSpectators = [...spectators]
+
+  for (let i = 0; i < room.seats.length; i++) {
+    const seat = room.seats[i]
+    if (!seat.openid) continue
+    if (seat.pendingAction === 'stand') {
+      // 将玩家移入观战者列表，保留筹码和积分信息
+      newSpectators.push({
+        openid: seat.openid,
+        nickname: seat.nickname,
+        avatar: seat.avatar,
+        chips: seat.chips || 0,               // 保留筹码
+        initialChips: seat.initialChips || 0,  // 保留基准
+        totalRefillCost: seat.totalRefillCost || 0,
+      })
+      pendingUpdates[`seats.${i}.openid`] = null
+      pendingUpdates[`seats.${i}.nickname`] = null
+      pendingUpdates[`seats.${i}.avatar`] = null
+      pendingUpdates[`seats.${i}.chips`] = 0
+      pendingUpdates[`seats.${i}.initialChips`] = 0
+      pendingUpdates[`seats.${i}.totalRefillCost`] = 0
+      pendingUpdates[`seats.${i}.status`] = 'waiting'
+      pendingUpdates[`seats.${i}.isReady`] = false
+      pendingUpdates[`seats.${i}.pendingAction`] = null
+      room.seats[i] = { ...seat, openid: null, nickname: null, avatar: null, chips: 0, pendingAction: null }
+    } else if (seat.pendingAction) {
+      // 清除其他 pendingAction
+      pendingUpdates[`seats.${i}.pendingAction`] = null
+      room.seats[i] = { ...seat, pendingAction: null }
+    }
+  }
+
+  if (Object.keys(pendingUpdates).length > 0) {
+    pendingUpdates.spectators = newSpectators
+    await db.collection('rooms').doc(roomId).update({ data: pendingUpdates })
+    room.spectators = newSpectators
+    await db.collection('room_views').doc(roomId).update({
+      data: { spectators: newSpectators, updatedAt: db.serverDate() },
+    })
+  }
+
   const activePlayers = room.seats.filter(s => s.openid !== null)
   if (activePlayers.length < 2) return { code: 400, msg: '玩家不足' }
 
@@ -43,7 +87,7 @@ async function initRound(event) {
   const bbIndex = getNextActiveIndex(room.seats, sbIndex)
   const firstActorIndex = getNextActiveIndex(room.seats, bbIndex)
 
-  // 筹码归零的玩家自动用积分补充，并扣除积分、累加 initialChips
+  // 筹码归零的玩家自动用积分补充，并扣除积分、更新 initialChips
   const refillUpdates = {}
   const refillMap = {}  // openid -> costPoints，供 room_views 展示
   for (let i = 0; i < room.seats.length; i++) {
@@ -51,16 +95,22 @@ async function initRound(event) {
     if (!seat.openid) continue
     if ((seat.chips || 0) === 0) {
       const costPoints = Math.ceil(config.buyInChips * config.pointsPerChip)
+      const prevInitial = seat.initialChips || 0
+      // 首次参与（prevInitial=0）：设基准，不算"损失"，totalRefillCost 不增加
+      // 后续补充（prevInitial>0）：筹码清零补充，才算损失
+      const isFirstJoin = prevInitial === 0
+      const newInitialChips = isFirstJoin ? config.buyInChips : prevInitial + config.buyInChips
+      const newRefillCost = isFirstJoin ? (seat.totalRefillCost || 0) : (seat.totalRefillCost || 0) + costPoints
+
       refillUpdates[`seats.${i}.chips`] = config.buyInChips
-      refillUpdates[`seats.${i}.initialChips`] = (seat.initialChips || config.buyInChips) + config.buyInChips
-      // 累加历史补充消耗
-      refillUpdates[`seats.${i}.totalRefillCost`] = (seat.totalRefillCost || 0) + costPoints
+      refillUpdates[`seats.${i}.initialChips`] = newInitialChips
+      refillUpdates[`seats.${i}.totalRefillCost`] = newRefillCost
       refillMap[seat.openid] = costPoints
       room.seats[i] = {
         ...seat,
         chips: config.buyInChips,
-        initialChips: (seat.initialChips || config.buyInChips) + config.buyInChips,
-        totalRefillCost: (seat.totalRefillCost || 0) + costPoints,
+        initialChips: newInitialChips,
+        totalRefillCost: newRefillCost,
       }
     }
   }
@@ -216,10 +266,14 @@ async function endRound(event) {
   if (!round) return { code: 404, msg: '牌局不存在' }
 
   // 全员 allin 时逐阶段翻牌，每阶段间隔 1.2s，翻完后再等 1.5s 展示结果
+  // 只剩一人（其他人弃牌）时不翻牌，直接结算
   let communityCards = round.communityCards || []
   let deck = round.deck || []
 
-  if (communityCards.length < 5) {
+  const remainingPlayers = round.playerStates.filter(p => p && p.status !== 'folded' && p.status !== 'out')
+  const needReveal = remainingPlayers.length > 1 && communityCards.length < 5
+
+  if (needReveal) {
     // 按 flop(3张) → turn(1张) → river(1张) 逐步翻出
     const revealSteps = []
     if (communityCards.length < 3) revealSteps.push(3 - communityCards.length, 1, 1)
@@ -340,7 +394,20 @@ async function endRound(event) {
     return { code: 0 }
   }
 
-  await cloud.callFunction({ name: 'game-engine', data: { action: 'initRound', roomId } })
+  const nextRoundResult = await cloud.callFunction({ name: 'game-engine', data: { action: 'initRound', roomId } })
+  const nextResult = nextRoundResult.result
+
+  // initRound 失败（玩家不足，如所有人都起立）：回到等待状态
+  if (nextResult && nextResult.code !== 0) {
+    const nowTs = db.serverDate()
+    await db.collection('rooms').doc(roomId).update({
+      data: { status: 'waiting', currentGameRoundId: null, lastActivityAt: nowTs },
+    })
+    await db.collection('room_views').doc(roomId).update({
+      data: { phase: 'waiting', gameRoundId: null, updatedAt: nowTs },
+    })
+  }
+
   return { code: 0 }
 }
 
@@ -375,6 +442,7 @@ async function syncRoomView(roomId, gameRoundId, round, room) {
       isSmallBlind: i === round.smallBlindSeatIndex,
       isBigBlind: i === round.bigBlindSeatIndex,
       isCurrentActor: i === round.currentActorSeatIndex,
+      pendingAction: seat.pendingAction || null,
       totalRefillCost: seat.totalRefillCost || 0,  // 累计补充消耗积分
     }
   })

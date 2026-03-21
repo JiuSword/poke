@@ -93,6 +93,7 @@ async function settle(event) {
           data: {
             _openid: s.openid,
             roomId,
+            roomCode: room.roomCode || '',
             gameRoundId: room.currentGameRoundId || '',
             userId: s.openid,
             chipsStart: s.initialChips,

@@ -20,6 +20,7 @@ Page({
     // 操作倒计时
     actionTimeoutOptions: ACTION_TIMEOUT_OPTIONS.map(o => o.label),
     actionTimeoutIndex: 0, // 默认30秒
+    isPublic: true,
     loading: false,
   },
 
@@ -50,6 +51,10 @@ Page({
     this.setData({ actionTimeoutIndex: Number(e.detail.value) })
   },
 
+  onPublicChange(e) {
+    this.setData({ isPublic: e.detail.value })
+  },
+
   calcCost(buyInChips, pointsIn, chipsOut) {
     if (!chipsOut) return 0
     return Math.ceil(buyInChips / chipsOut * pointsIn)
@@ -57,7 +62,7 @@ Page({
 
   async onCreateRoom() {
     if (this.data.loading) return
-    const { smallBlind, maxPlayers, buyInChips, pointsIn, chipsOut, actionTimeoutIndex } = this.data
+    const { smallBlind, maxPlayers, buyInChips, pointsIn, chipsOut, actionTimeoutIndex, isPublic } = this.data
 
     if (smallBlind < 1) return wx.showToast({ title: '小盲注至少为1', icon: 'none' })
     if (maxPlayers < 2 || maxPlayers > 9) return wx.showToast({ title: '玩家数2~9人', icon: 'none' })
@@ -72,6 +77,7 @@ Page({
     try {
       const res = await roomManage('createRoom', {
         config: { smallBlind, maxPlayers, buyInChips, pointsPerChip, pointsIn, chipsOut, actionTimeoutSec },
+        isPublic,
       })
       wx.navigateTo({
         url: `/pages/room/lobby/lobby?roomId=${res.data.roomId}&roomCode=${res.data.roomCode}&isHost=1`,

@@ -1,6 +1,11 @@
 /* pages/home/home.wxss */
 .container {
-  padding: 40rpx 32rpx;
+  padding: 32rpx 64rpx 100rpx;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .loading-area {
@@ -19,33 +24,33 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  margin-bottom: 48rpx;
+  margin-bottom: 32rpx;
+  background: rgba(255,255,255,0.06);
+  border-radius: 24rpx;
+  padding: 28rpx 28rpx;
+  border: 1rpx solid rgba(255,255,255,0.1);
 }
 
 .avatar {
-  width: 100rpx;
-  height: 100rpx;
+  width: 110rpx;
+  height: 110rpx;
   border-radius: 50%;
-  margin-right: 24rpx;
+  margin-right: 28rpx;
   border: 3rpx solid rgba(255,215,0,0.5);
+  flex-shrink: 0;
 }
 
-.user-info {
-  flex: 1;
-}
+.user-info { flex: 1; }
 
 .nickname {
-  font-size: 34rpx;
+  font-size: 38rpx;
   font-weight: bold;
   color: #fff;
   display: block;
-  margin-bottom: 8rpx;
+  margin-bottom: 10rpx;
 }
 
-.points-row {
-  display: flex;
-  align-items: center;
-}
+.points-row { display: flex; align-items: center; }
 
 .points-label {
   font-size: 24rpx;
@@ -54,25 +59,36 @@
 }
 
 .points-value {
-  font-size: 32rpx;
+  font-size: 34rpx;
   font-weight: bold;
 }
 
+/* 内容区：撑满剩余空间 */
+.content-wrap {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 菜单格子：撑满剩余空间 */
 .menu-grid {
+  flex: 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 24rpx;
+  grid-template-rows: 1fr 1fr;
+  gap: 36rpx;
 }
 
 .menu-item {
   background: rgba(255,255,255,0.08);
-  border-radius: 24rpx;
-  padding: 40rpx 24rpx;
+  border-radius: 28rpx;
+  padding: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   border: 1rpx solid rgba(255,255,255,0.1);
-  active-background: rgba(255,255,255,0.15);
 }
 
 .menu-item:active {
@@ -80,18 +96,18 @@
 }
 
 .menu-icon {
-  font-size: 72rpx;
-  margin-bottom: 16rpx;
+  font-size: 88rpx;
+  margin-bottom: 20rpx;
 }
 
 .menu-label {
-  font-size: 32rpx;
+  font-size: 34rpx;
   font-weight: bold;
   color: #fff;
-  margin-bottom: 8rpx;
+  margin-bottom: 10rpx;
 }
 
 .menu-desc {
-  font-size: 24rpx;
+  font-size: 26rpx;
   color: rgba(255,255,255,0.5);
 }

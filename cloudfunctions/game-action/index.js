@@ -11,11 +11,10 @@ const DEFAULT_TIMEOUT_SEC = 30
 
 exports.main = async (event, context) => {
   const { OPENID } = cloud.getWXContext()
-  // 支持两种调用方式：
-  // 1. 客户端: { action: 'playerAction', playerAction: 'fold', ... }
-  // 2. 直接: { playerAction: 'fold', roomId, gameRoundId, ... }
+  // 系统调用（timer-scheduler）时用 _openid 参数，客户端调用用 OPENID
+  const openid = event._systemCall ? event._openid : OPENID
   if (event.playerAction || event.action === 'playerAction') {
-    return playerAction(OPENID, event)
+    return playerAction(openid, event)
   }
   return { code: 400, msg: '未知操作' }
 }
@@ -171,6 +170,9 @@ async function playerAction(openid, event) {
   const timeoutSec = room.config?.actionTimeoutSec === 0 ? 86400 : (room.config?.actionTimeoutSec || DEFAULT_TIMEOUT_SEC)
   const actionDeadline = new Date(Date.now() + timeoutSec * 1000)
 
+  // 顺带检查掉线玩家（事件驱动，不依赖定时器）
+  await checkDisconnectedPlayers(room, roomId)
+
   await db.collection('game_rounds').doc(gameRoundId).update({
     data: {
       playerStates,
@@ -217,6 +219,8 @@ async function syncRoomViewPartial(roomId, gameRoundId, data) {
       isSmallBlind: i === round.smallBlindSeatIndex,
       isBigBlind: i === round.bigBlindSeatIndex,
       isCurrentActor: i === currentActorSeatIndex,
+      totalRefillCost: seat.totalRefillCost || 0,
+      pendingAction: seat.pendingAction || null,
     }
   })
 
@@ -232,4 +236,39 @@ async function syncRoomViewPartial(roomId, gameRoundId, data) {
       updatedAt: db.serverDate(),
     },
   })
+}
+
+// 检查掉线玩家：lastSeen 超过 90s 标记 pendingAction='stand'
+// 在每次操作后顺带执行，事件驱动，不依赖定时器
+const DISCONNECT_TIMEOUT_MS = 90 * 1000
+
+async function checkDisconnectedPlayers(room, roomId) {
+  const now = Date.now()
+  const updates = {}
+  const viewUpdates = {}
+  let hasUpdate = false
+
+  for (let i = 0; i < room.seats.length; i++) {
+    const seat = room.seats[i]
+    if (!seat.openid) continue
+    if (seat.pendingAction === 'stand') continue
+    if (!seat.lastSeen) continue
+
+    const lastSeenMs = new Date(seat.lastSeen).getTime()
+    if (now - lastSeenMs > DISCONNECT_TIMEOUT_MS) {
+      updates[`seats.${i}.pendingAction`] = 'stand'
+      viewUpdates[`seats.${i}.pendingAction`] = 'stand'
+      hasUpdate = true
+      console.log(`掉线玩家 ${seat.openid} 标记起立`)
+    }
+  }
+
+  if (hasUpdate) {
+    updates.lastActivityAt = db.serverDate()
+    viewUpdates.updatedAt = db.serverDate()
+    await Promise.all([
+      db.collection('rooms').doc(roomId).update({ data: updates }),
+      db.collection('room_views').doc(roomId).update({ data: viewUpdates }),
+    ])
+  }
 }

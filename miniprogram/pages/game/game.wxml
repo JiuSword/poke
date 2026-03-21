@@ -1,4 +1,8 @@
 <!-- pages/game/game.wxml -->
+<wxs module="fmt">
+  function lastChar(s) { return s ? s[s.length - 1] : '?'; }
+  module.exports = { lastChar: lastChar };
+</wxs>
 <view class="game-root">
 
   <!-- 本手结算浮层 -->
@@ -36,12 +40,21 @@
         <text class="room-tag-code">{{roomCode}}</text>
       </view>
       <view class="top-icon-btns">
-        <view class="icon-btn pause-btn {{isPaused ? 'paused' : ''}}" bindtap="onTogglePause">
-          <image class="icon-img" src="/images/ui/暂停.png" mode="aspectFit" />
-        </view>
-        <view class="icon-btn exit-btn" bindtap="onExitOrEnd">
-          <image class="icon-img" src="/images/ui/关机.png" mode="aspectFit" />
-        </view>
+        <!-- 观战者：显示坐下提示；参与者：显示暂停+起立+关机 -->
+        <block wx:if="{{isSpectator}}">
+          <view class="spectator-tag">👁 观战中</view>
+        </block>
+        <block wx:else>
+          <view class="icon-btn pause-btn {{isPaused ? 'paused' : ''}}" bindtap="onTogglePause">
+            <image class="icon-img" src="/images/ui/暂停.png" mode="aspectFit" />
+          </view>
+          <view class="icon-btn standup-btn {{myPendingStand ? 'pending-stand' : ''}}" bindtap="onStandUp">
+            <image class="icon-img" src="/images/ui/起立.png" mode="aspectFit" />
+          </view>
+          <view class="icon-btn exit-btn" bindtap="onExitOrEnd">
+            <image class="icon-img" src="/images/ui/关机.png" mode="aspectFit" />
+          </view>
+        </block>
       </view>
     </view>
   </view>
@@ -75,13 +88,22 @@
         </view>
       </view>
 
+      <!-- 观战者可坐下的空座位节点 -->
+      <block wx:if="{{isSpectator}}">
+        <view wx:for="{{availableSeats}}" wx:key="seatIndex"
+          class="player-node seat-pos-{{item.seatIndex}} sitdown-node"
+          bindtap="onSitDown" data-seat-index="{{item.seatIndex}}">
+          <image class="sitdown-icon" src="/images/ui/坐下.png" mode="aspectFit" />
+        </view>
+      </block>
+
       <!-- 对手玩家节点（绝对定位，围绕牌桌） -->
       <block wx:for="{{seats}}" wx:key="seatIndex" wx:if="{{item.openid && item.seatIndex !== mySeatIndex}}">
         <view class="player-node seat-pos-{{item.seatIndex}} {{item.isCurrentActor ? 'acting' : ''}} {{item.status === 'folded' ? 'folded' : ''}}">
           <view class="player-card-wrap">
             <view class="player-avatar-box">
               <image wx:if="{{item.avatar}}" class="p-avatar" src="{{item.avatar}}" mode="aspectFill" />
-              <view wx:else class="p-avatar p-avatar-placeholder">{{item.nickname[0]}}</view>
+              <view wx:else class="p-avatar p-avatar-placeholder">{{fmt.lastChar(item.nickname)}}</view>
               <view wx:if="{{item.isDealer}}" class="dealer-chip">D</view>
             </view>
             <view class="player-info-box">
@@ -104,6 +126,11 @@
           <view wx:if="{{item.isBigBlind}}" class="blind-tag bb-tag">BB</view>
         </view>
       </block>
+
+      <!-- 观战者列表（椭圆内底部） -->
+      <view wx:if="{{spectators.length > 0}}" class="spectators-bar">
+        <text class="spectators-text">👁 {{spectators.length}}人观战</text>
+      </view>
 
       <!-- 我的手牌（椭圆底部中央） -->
       <view class="my-hole-cards-node">
@@ -133,8 +160,13 @@
       <view wx:if="{{isMyTurn}}" class="countdown-pill">{{countdown}}s</view>
     </view>
 
+    <!-- 观战提示 -->
+    <view wx:if="{{isSpectator}}" class="spectator-hint">
+      <text class="spectator-hint-text">点击空座位坐下参与下一手</text>
+    </view>
+
     <!-- 操作面板（始终显示，非我的回合时全部禁用） -->
-    <view wx:if="{{phase !== 'ended' && phase !== 'dismissed' && phase !== 'game_over'}}"
+    <view wx:if="{{!isSpectator && phase !== 'ended' && phase !== 'dismissed' && phase !== 'game_over'}}"
       class="action-zone {{!isMyTurn || isPaused ? 'action-zone-disabled' : ''}}">
 
       <!-- 加注展开面板 -->
@@ -142,9 +174,13 @@
         <!-- 金额显示 + 输入框 -->
         <view class="raise-amount-row">
           <text class="raise-amount-label">{{isAllinMode ? 'All In' : '加注'}}</text>
-          <input class="raise-amount-input" type="number" value="{{raiseAmount}}" bindinput="onRaiseAmountInput" />
+          <view class="raise-stepper">
+            <view class="stepper-btn" bindtap="onRaiseStep" data-dir="-1">－</view>
+            <input class="raise-amount-input" type="number" value="{{raiseAmount}}" bindinput="onRaiseAmountInput" />
+            <view class="stepper-btn" bindtap="onRaiseStep" data-dir="1">＋</view>
+          </view>
           <button class="raise-confirm-btn {{isAllinMode ? 'allin-confirm' : ''}}" bindtap="onRaise" disabled="{{!isMyTurn || isPaused}}">
-            {{isAllinMode ? '确认 Allin' : '确认加注'}}
+            {{isAllinMode ? 'Allin' : '确认'}}
           </button>
         </view>
 

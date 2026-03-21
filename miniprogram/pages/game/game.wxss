@@ -21,9 +21,37 @@
 
 /* 图标按钮组 */
 .top-icon-btns { margin-top: 16rpx; display: flex; gap: 24rpx; align-items: center; }
-.icon-btn {
-  width: 64rpx; height: 64rpx; }
+.icon-btn { width: 64rpx; height: 64rpx; }
 .icon-img { width: 100%; height: 100%; }
+.spectator-tag {
+  font-size: 22rpx; color: #ffd700;
+  background: rgba(255,215,0,0.15); border: 1rpx solid rgba(255,215,0,0.3);
+  border-radius: 20rpx; padding: 6rpx 20rpx;
+}
+.standup-btn { width: 64rpx; height: 64rpx; position: relative; }
+.standup-btn.pending-stand .icon-img { opacity: 0.45; }
+.standup-btn.pending-stand::after {
+  content: '';
+  position: absolute; top: 0; right: 0;
+  width: 16rpx; height: 16rpx; border-radius: 50%;
+  background: #e67e22;
+}
+
+/* 观战相关 */
+.spectators-bar {
+  position: absolute; bottom: 100rpx; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.5); border-radius: 20rpx; padding: 4rpx 20rpx; display: flex; align-items: center;
+}
+.spectators-text { font-size: 20rpx; color: rgba(255,255,255,0.6); }
+
+.sitdown-node { cursor: pointer; }
+.sitdown-icon { width: 60rpx; height: 60rpx; opacity: 0.85; }
+
+.spectator-hint {
+  padding: 16rpx 0 8rpx;
+  text-align: center;
+}
+.spectator-hint-text { font-size: 24rpx; color: rgba(255,255,255,0.5); }
 
 /* ── 暂停遮罩 */
 .pause-overlay {
@@ -207,17 +235,17 @@
   flex-shrink: 0;
   background: #161b27;
   /* padding-bottom 由 wxml style 动态注入，这里设置基础值作为兜底 */
-  padding: 28rpx 28rpx 32rpx;
+  padding: 16rpx 28rpx 32rpx;
   border-top: 1rpx solid rgba(255,255,255,0.07);
 }
 
 /* 筹码 + 倒计时信息行 */
 .my-info-bar {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 28rpx;
+  margin-bottom: 30rpx;
 }
 .my-chips-block { display: flex; flex-direction: column; gap: 4rpx; }
-.my-chips-val { font-size: 32rpx; font-weight: bold; color: #ffd700; }
+.my-chips-val { font-size: 48rpx; font-weight: bold; color: #ffd700; }
 .my-refill-hint { font-size: 19rpx; color: #e74c3c; }
 .countdown-pill {
   background: #e91e63; color: #fff; font-size: 22rpx; font-weight: bold;
@@ -239,15 +267,29 @@
 /* 金额行 */
 .raise-amount-row { display: flex; align-items: center; gap: 12rpx; margin-bottom: 14rpx; }
 .raise-amount-label { font-size: 24rpx; color: rgba(255,255,255,0.5); white-space: nowrap; }
+
+/* stepper 容器：- 输入框 + */
+.raise-stepper {
+  flex: 1; display: flex; align-items: center; gap: 8rpx;
+}
+.stepper-btn {
+  width: 56rpx; height: 56rpx; border-radius: 12rpx;
+  background: rgba(255,255,255,0.12); border: 1rpx solid rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32rpx; color: #fff; font-weight: bold;
+  flex-shrink: 0;
+}
+.stepper-btn:active { background: rgba(255,255,255,0.25); }
+
 .raise-amount-input {
-  flex: 1; background: rgba(0,0,0,0.3); color: #ffd700;
-  border-radius: 10rpx; padding: 8rpx 16rpx; font-size: 32rpx; font-weight: bold;
+  flex: 1; background: rgba(0,0,0,0.3); color: #ffd700; width: 150rpx;
+  border-radius: 10rpx; padding: 8rpx 8rpx; font-size: 30rpx; font-weight: bold;
   border: 1rpx solid rgba(255,215,0,0.4); text-align: center;
 }
 .raise-confirm-btn {
   background: #e67e22; color: #fff; border: none;
-  border-radius: 10rpx; padding: 10rpx 24rpx; font-size: 26rpx; font-weight: bold;
-  white-space: nowrap;
+  border-radius: 10rpx; padding: 20rpx 10rpx; font-size: 24rpx; font-weight: bold;
+  white-space: nowrap; flex-shrink: 1;
 }
 .raise-confirm-btn.allin-confirm { background: #8e44ad; }
 

@@ -19,6 +19,8 @@ exports.main = async (event, context) => {
       return getProfile(OPENID)
     case 'getPointRecords':
       return getPointRecords(OPENID, event)
+    case 'getAiRanking':
+      return getAiRanking(OPENID)
     default:
       return { code: 400, msg: '未知操作' }
   }
@@ -108,6 +110,34 @@ async function getPointRecords(openid, event) {
         pageSize,
       },
     }
+  } catch (e) {
+    return { code: 500, msg: e.message }
+  }
+}
+
+async function getAiRanking(openid) {
+  try {
+    const res = await db.collection('users')
+      .where({ 'aiStats.totalGames': _.gt(0) })
+      .orderBy('aiStats.totalChipsWon', 'desc')
+      .limit(50)
+      .field({ nickname: true, avatar: true, aiStats: true, _openid: true })
+      .get()
+
+    const list = res.data.map((u, i) => ({
+      rank: i + 1,
+      nickname: u.nickname,
+      avatar: u.avatar,
+      totalGames: u.aiStats?.totalGames || 0,
+      totalWins: u.aiStats?.totalWins || 0,
+      totalChipsWon: u.aiStats?.totalChipsWon || 0,
+      winRate: u.aiStats?.totalGames > 0
+        ? Math.round((u.aiStats.totalWins / u.aiStats.totalGames) * 100)
+        : 0,
+      isMe: u._openid === openid,
+    }))
+
+    return { code: 0, data: { list } }
   } catch (e) {
     return { code: 500, msg: e.message }
   }

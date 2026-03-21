@@ -99,6 +99,11 @@ Page({
     pausedBy: null,
     // 结算中
     isSettling: false,
+    // 观战
+    isSpectator: false,
+    spectators: [],
+    availableSeats: [],
+    myPendingStand: false,
     // 补充筹码消耗积分
     myRefillCost: 0,
     // 暂停
@@ -109,6 +114,7 @@ Page({
 
   watchKeys: [],
   countdownInterval: null,
+  heartbeatInterval: null,
 
   onLoad(options) {
     const myOpenid = app.globalData.userInfo?._openid || ''
@@ -117,15 +123,38 @@ Page({
     this.setData({
       roomId: options.roomId,
       roomCode: options.roomCode || '',
-      gameRoundId: options.gameRoundId,
+      gameRoundId: options.gameRoundId || '',
       myOpenid,
       isHost: options.isHost === '1',
+      isSpectator: options.isSpectator === '1',
       statusBarHeight,
       safeAreaBottom,
     })
     this.startWatch()
-    // 获取房间小盲注配置，用于滑动条步距
     this.loadRoomConfig(options.roomId)
+    this.startHeartbeat(options.roomId)
+  },
+
+  startHeartbeat(roomId) {
+    this.stopHeartbeat()
+    const sendBeat = () => {
+      const { myOpenid } = this.data
+      if (!myOpenid || !roomId) return
+      // 更新 rooms.seats 里自己的 lastSeen
+      wx.cloud.callFunction({
+        name: 'room-manage',
+        data: { action: 'heartbeat', roomId, openid: myOpenid },
+      }).catch(() => {})
+    }
+    sendBeat()
+    this.heartbeatInterval = setInterval(sendBeat, 30000)
+  },
+
+  stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval)
+      this.heartbeatInterval = null
+    }
   },
 
   async loadRoomConfig(roomId) {
@@ -140,6 +169,9 @@ Page({
   onUnload() {
     if (this._betAudio) { this._betAudio.destroy(); this._betAudio = null }
     if (this._allinAudio) { this._allinAudio.destroy(); this._allinAudio = null }
+    if (this._foldAudio) { this._foldAudio.destroy(); this._foldAudio = null }
+    if (this._checkAudio) { this._checkAudio.destroy(); this._checkAudio = null }
+    this.stopHeartbeat()
     this.clearCountdown()
     this.watchKeys.forEach(k => watchManager.unwatch(k))
   },
@@ -186,6 +218,26 @@ Page({
       }
     }
 
+    // 检测对手操作音效：对比 actionHistory 最新一条
+    const newHistory = roomView.actionHistory || []
+    const oldHistory = this.data._lastActionHistory || []
+    if (newHistory.length > oldHistory.length) {
+      const latest = newHistory[newHistory.length - 1]
+      // 只播放对手操作（自己操作已在 doAction 里播放）
+      if (latest && latest.openid !== myOpenid && latest.action !== 'blind') {
+        if (latest.action === 'allin') {
+          this._playAllin()
+        } else if (latest.action === 'call' || latest.action === 'raise') {
+          this._playBet()
+        } else if (latest.action === 'fold') {
+          this._playFold()
+        } else if (latest.action === 'check') {
+          this._playCheck()
+        }
+      }
+    }
+    this.data._lastActionHistory = newHistory
+
     // 计算最优牌型
     const rawCommunity = roomView.communityCards || []
     const myBestHand = evaluateHandDisplay(this.data.myCards, rawCommunity)
@@ -199,6 +251,23 @@ Page({
       this.setData({ isSettling: true })
     }
 
+    // 观战者：同步 gameRoundId（观战者进入时可能没有 gameRoundId）
+    if (this.data.isSpectator && roomView.gameRoundId && !this.data.gameRoundId) {
+      this.setData({ gameRoundId: roomView.gameRoundId })
+    }
+
+    // 同步观战者列表和空座位列表
+    const spectators = roomView.spectators || []
+    const availableSeats = (roomView.seats || []).filter(s => s.openid === null || s.openid === undefined || s.openid === '')
+    // isSpectator：以服务端 spectators 列表为准；若列表为空（旧文档）则保留 onLoad 设置的值
+    const isSpectatorFromList = spectators.some(s => s.openid === myOpenid)
+    // 只有在 seats 里找不到自己、且在 spectators 里才算观战者
+    const inSeat = seats.some(s => s.openid === myOpenid)
+    const isSpectator = !inSeat && (isSpectatorFromList || (spectators.length === 0 && this.data.isSpectator))
+    const becameSpectator = isSpectator && !this.data.isSpectator
+    const spectatorUpdate = becameSpectator ? { myCards: [], myCardsParsed: [], myBestHand: '' } : {}
+    this.setData({ spectators, availableSeats, isSpectator, ...spectatorUpdate })
+
     // 计算跟注/加注状态
     const myChips = mySeat ? mySeat.chips : 0
     const currentBet = roomView.currentBet || 0
@@ -208,6 +277,9 @@ Page({
     const callIsAllin = callAmount > 0 && myChips <= callAmount
     // 剩余筹码不足以加注（跟注后没有多余筹码），加注按钮置灰
     const canRaise = myChips > callAmount
+
+    // 检测是否标记了待起立（仅用于 UI 提示，不影响本手操作）
+    const myPendingStand = mySeat && mySeat.pendingAction === 'stand'
 
     this.setData({
       seats,
@@ -225,6 +297,7 @@ Page({
       callAmount,
       canRaise,
       myBestHand,
+      myPendingStand,
       isPaused,
       pausedBy,
     })
@@ -266,6 +339,19 @@ Page({
         this.setData({ myCards: cards || [], myCardsParsed: parsed, myBestHand })
       })
       this.watchKeys[1] = k2
+    }
+
+    // 玩家不足（如全部起立），回到等待厅
+    if (roomView.phase === 'waiting') {
+      this.clearCountdown()
+      this.watchKeys.forEach(k => watchManager.unwatch(k))
+      wx.showToast({ title: '玩家不足，回到等待厅', icon: 'none' })
+      setTimeout(() => {
+        wx.redirectTo({
+          url: `/pages/room/lobby/lobby?roomId=${this.data.roomId}&roomCode=${this.data.roomCode}&isHost=${this.data.isHost ? '1' : '0'}`,
+        })
+      }, 1500)
+      return
     }
 
     // 房主结束游戏：把结算数据存到全局，跳转结算页
@@ -401,6 +487,17 @@ Page({
     this.setRaiseAmount(e.detail.value)
   },
 
+  onRaiseStep(e) {
+    const dir = Number(e.currentTarget.dataset.dir)
+    const step = this.data.smallBlind || 1
+    const myChips = this.data.myChips || 1
+    const callAmount = this.data.callAmount || 0
+    const minRaise = this.data.sliderMin || 1
+    const maxRaise = Math.max(myChips - callAmount, minRaise)
+    const newAmount = Math.min(Math.max((this.data.raiseAmount || minRaise) + dir * step, minRaise), maxRaise)
+    this.setRaiseAmount(newAmount)
+  },
+
   onQuickRaise(e) {
     const amount = Number(e.currentTarget.dataset.amount)
     const myChips = this.data.myChips || 1
@@ -435,22 +532,72 @@ Page({
     })
   },
 
-  async onLeaveGame() {
+  async onSitDown(e) {
+    const seatIndex = Number(e.currentTarget.dataset.seatIndex)
+    try {
+      const { roomManage } = require('../../utils/cloud')
+      await roomManage('sitDown', { roomId: this.data.roomId, seatIndex })
+      this.setData({ isSpectator: false })
+      wx.showToast({ title: '下一手将参与游戏', icon: 'none' })
+    } catch (err) {
+      wx.showToast({ title: err.message || '坐下失败', icon: 'none' })
+    }
+  },
+
+  async onStandUp() {
+    const { myPendingStand } = this.data
     wx.showModal({
-      title: '退出房间',
-      content: '退出后将自动弃牌，确定退出吗？',
+      title: myPendingStand ? '取消起立' : '起立',
+      content: myPendingStand ? '取消起立，继续参与下一手？' : '本手结束后将退出座位成为观战者，确定吗？',
+      confirmText: myPendingStand ? '取消起立' : '确定',
       success: async res => {
         if (!res.confirm) return
         try {
-          // 若轮到自己先弃牌
-          if (this.data.isMyTurn) {
-            await this.doAction('fold', 0)
-          }
           const { roomManage } = require('../../utils/cloud')
-          await roomManage('leaveRoom', { roomId: this.data.roomId })
-        } catch (e) {
-          // 忽略错误，直接跳回首页
+          if (myPendingStand) {
+            // 取消起立：清除 pendingAction
+            await roomManage('cancelStandUp', { roomId: this.data.roomId })
+            wx.showToast({ title: '已取消起立', icon: 'none' })
+          } else {
+            await roomManage('standUp', { roomId: this.data.roomId })
+            wx.showToast({ title: '本手结束后将起立', icon: 'none' })
+          }
+        } catch (err) {
+          wx.showToast({ title: err.message || '操作失败', icon: 'none' })
         }
+      },
+    })
+  },
+
+  async onLeaveGame() {
+    const { isSpectator, phase } = this.data
+    const inGame = !isSpectator && phase !== 'ended' && phase !== 'dismissed' && phase !== 'game_over'
+
+    wx.showModal({
+      title: '退出房间',
+      content: isSpectator ? '确定退出观战吗？' : (inGame ? '确定后将自动弃牌并起立，以观战者身份留在房间' : '确定退出房间吗？'),
+      success: async res => {
+        if (!res.confirm) return
+        const { roomManage } = require('../../utils/cloud')
+        if (inGame) {
+          if (!this.data.isMyTurn) {
+            wx.showToast({ title: '请等待你的回合再操作', icon: 'none' })
+            return
+          }
+          // 游戏中：先弃牌，再起立变为观战者，留在页面
+          try {
+            await this.doAction('fold', 0)
+          } catch (e) {}
+          try {
+            await roomManage('standUp', { roomId: this.data.roomId })
+          } catch (e) {}
+          // 不跳页面，watch 会感知座位变化，自动切换为观战状态
+          return
+        }
+        // 等待中或观战者：直接离开
+        try {
+          await roomManage('leaveRoom', { roomId: this.data.roomId })
+        } catch (e) {}
         this.watchKeys.forEach(k => watchManager.unwatch(k))
         wx.reLaunch({ url: '/pages/home/home' })
       },
@@ -480,11 +627,15 @@ Page({
   async doAction(action, amount) {
     if (this.data.acting || !this.data.isMyTurn) return
     this.setData({ acting: true, showRaiseInput: false })
-    // 下注类操作播放音效
+    // 操作音效
     if (action === 'allin') {
       this._playAllin()
     } else if (action === 'call' || action === 'raise') {
       this._playBet()
+    } else if (action === 'fold') {
+      this._playFold()
+    } else if (action === 'check') {
+      this._playCheck()
     }
     try {
       await gameAction('playerAction', {
@@ -520,11 +671,31 @@ Page({
     this._allinAudio.play()
   },
 
+  _playFold() {
+    if (!this._foldAudio) {
+      this._foldAudio = wx.createInnerAudioContext()
+      this._foldAudio.src = '/audios/flod.mp3'
+      this._foldAudio.volume = 0.4
+    }
+    this._foldAudio.stop()
+    this._foldAudio.play()
+  },
+
+  _playCheck() {
+    if (!this._checkAudio) {
+      this._checkAudio = wx.createInnerAudioContext()
+      this._checkAudio.src = '/audios/check.mp3'
+      this._checkAudio.volume = 1.0
+    }
+    this._checkAudio.stop()
+    this._checkAudio.play()
+  },
+
   _playCard() {
     // 每次创建新实例，避免多张牌快速翻出时互相打断
     const audio = wx.createInnerAudioContext()
     audio.src = '/audios/card.mp3'
-    audio.volume = 0.7
+    audio.volume = 0.8
     audio.play()
     audio.onEnded(() => audio.destroy())
     audio.onError(() => audio.destroy())

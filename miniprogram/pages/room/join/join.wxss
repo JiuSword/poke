@@ -10,4 +10,52 @@
   width: 100%; box-sizing: border-box;
 }
 .placeholder { color: rgba(255,255,255,0.2); font-size: 36rpx; letter-spacing: 4rpx; }
-.join-btn { width: 100%; padding: 32rpx 0; font-size: 36rpx; }
+.join-btn { width: 100%; padding: 32rpx 0; font-size: 36rpx; margin-bottom: 56rpx; }
+
+/* 公开房间 */
+.section-header {
+  width: 100%; display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20rpx;
+}
+.section-title { font-size: 28rpx; color: rgba(255,255,255,0.6); }
+.refresh-btn { font-size: 26rpx; color: #ffd700; padding: 8rpx 16rpx; }
+
+.rooms-loading, .rooms-empty {
+  font-size: 28rpx; color: rgba(255,255,255,0.3); padding: 40rpx 0;
+}
+
+.rooms-list { width: 100%; }
+
+.room-item {
+  width: 100%; margin-bottom: 20rpx; padding: 24rpx 28rpx;
+  box-sizing: border-box; active-opacity: 0.7;
+}
+
+.room-meta {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20rpx;
+}
+.room-code-row { display: flex; align-items: center; gap: 16rpx; }
+.room-code { font-size: 30rpx; color: #ffd700; font-weight: bold; }
+.room-status {
+  font-size: 20rpx;
+  vertical-align: middle;
+}
+.status-waiting {  color: #ffd700; }
+.status-playing {  color: #50c878; }
+.room-config { font-size: 24rpx; color: rgba(255,255,255,0.5); }
+
+.room-seats { display: flex; align-items: center; gap: 12rpx; flex-wrap: wrap; }
+.seat-avatar-wrap { width: 56rpx; height: 56rpx; }
+.seat-avatar { width: 56rpx; height: 56rpx; border-radius: 50%; border: 2rpx solid rgba(255,215,0,0.4); }
+.seat-avatar-placeholder {
+  background: #5c35a0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22rpx; color: #fff; font-weight: bold;
+}
+.seat-empty {
+  width: 56rpx; height: 56rpx; border-radius: 50%;
+  border: 2rpx dashed rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.03);
+}
+.seat-count { font-size: 24rpx; color: rgba(255,255,255,0.4); margin-left: 8rpx; }

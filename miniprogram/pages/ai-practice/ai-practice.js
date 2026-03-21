@@ -1,6 +1,7 @@
 // pages/ai-practice/ai-practice.js
-const { aiEngine } = require('../../utils/cloud')
+const { aiEngine, userAuth } = require('../../utils/cloud')
 const { formatCard } = require('../../utils/format')
+const app = getApp()
 
 Page({
   data: {
@@ -35,7 +36,28 @@ Page({
     sliderMax: 10000,
     isAllinMode: false,
     callIsAllin: false,
+    callAmount: 0,
     canRaise: true,
+    smallBlind: 100,
+    prevCardCount: 0,
+    safeAreaBottom: 16,
+    rankingList: [],
+    rankingLoading: false,
+  },
+
+  onLoad() {
+    this.setData({ safeAreaBottom: app.globalData.safeAreaBottom || 16 })
+    this.loadRanking()
+  },
+
+  async loadRanking() {
+    this.setData({ rankingLoading: true })
+    try {
+      const res = await userAuth('getAiRanking')
+      this.setData({ rankingList: res.data.list })
+    } catch (e) {} finally {
+      this.setData({ rankingLoading: false })
+    }
   },
 
   onDifficultyChange(e) {
@@ -84,18 +106,54 @@ Page({
     const newMinRaise = state.minRaise || 1
     const initRaise = Math.min(Math.max(newMinRaise, newMinRaise), myChips || 1)
 
+    // AI 操作音效：对比上一次 playerStates 检测 AI 的操作变化
+    const prevStates = this.data.playerStates || []
+    const newStates = state.playerStates || []
+    for (let i = 1; i < newStates.length; i++) {
+      const prev = prevStates[i]
+      const curr = newStates[i]
+      if (!prev || !curr || !curr.isAI) continue
+      // 检测弃牌
+      if (prev.status !== 'folded' && curr.status === 'folded') {
+        this._playFold(); break
+      }
+      // 检测下注/加注（betTotal 增加）
+      if ((curr.betTotal || 0) > (prev.betTotal || 0)) {
+        if (curr.status === 'allin') { this._playAllin(); break }
+        else { this._playBet(); break }
+      }
+      // 检测过牌（betTotal 不变，hasActed 变为 true）
+      if (!prev.hasActed && curr.hasActed && (curr.betTotal || 0) === (prev.betTotal || 0)) {
+        this._playCheck(); break
+      }
+    }
+
+    // 翻牌动画：记录上一次公共牌数量
+    const prevCardCount = this.data.communityCards.length
+    const newCommunityCards = communityRaw.map(formatCard)
+    const newCount = newCommunityCards.length - prevCardCount
+
+    // 翻牌音效
+    if (newCount > 0) {
+      for (let i = 0; i < newCount; i++) {
+        setTimeout(() => this._playCard(), i * 150)
+      }
+    }
+
     this.setData({
       phase: state.phase,
       pot: state.pot || 0,
       currentBet,
       myChips,
       myCards: (myPs?.holeCards || []).map(formatCard),
-      communityCards: (communityRaw).map(formatCard),
+      communityCards: newCommunityCards,
+      prevCardCount,
       isMyTurn: state.currentActorIndex === 0 && state.phase !== 'ended',
       winners: state.winners || [],
       playerStates: state.playerStates || [],
       showRaiseInput: false,
       callIsAllin,
+      callAmount,
       canRaise,
       myBestHand,
       sliderMin: newMinRaise,
@@ -148,6 +206,11 @@ Page({
   async doAction(action, amount) {
     if (this.data.acting || !this.data.isMyTurn) return
     this.setData({ acting: true, showRaiseInput: false })
+    // 自己操作音效
+    if (action === 'allin') this._playAllin()
+    else if (action === 'call' || action === 'raise') this._playBet()
+    else if (action === 'fold') this._playFold()
+    else if (action === 'check') this._playCheck()
     try {
       const res = await aiEngine('playerAction', {
         sessionId: this.data.sessionId,
@@ -194,6 +257,17 @@ Page({
     this.setRaiseAmount(e.detail.value)
   },
 
+  onRaiseStep(e) {
+    const dir = Number(e.currentTarget.dataset.dir)
+    const step = this.data.smallBlind || 100
+    const myChips = this.data.myChips || 1
+    const callAmount = this.data.callAmount || 0
+    const minRaise = this.data.sliderMin || 1
+    const maxRaise = Math.max(myChips - callAmount, minRaise)
+    const newAmount = Math.min(Math.max((this.data.raiseAmount || minRaise) + dir * step, minRaise), maxRaise)
+    this.setRaiseAmount(newAmount)
+  },
+
   onQuickRaise(e) {
     const amount = Number(e.currentTarget.dataset.amount)
     const myChips = this.data.myChips || 1
@@ -227,9 +301,42 @@ Page({
       content: '确定退出？',
       success: async res => {
         if (!res.confirm) return
+        this._destroyAudios()
         try { await aiEngine('endSession', { sessionId: this.data.sessionId }) } catch (e) {}
         this.setData({ started: false, sessionId: null })
+        this.loadRanking()
       },
+    })
+  },
+
+  _playBet() {
+    if (!this._betAudio) { this._betAudio = wx.createInnerAudioContext(); this._betAudio.src = '/audios/bet.mp3'; this._betAudio.volume = 0.8 }
+    this._betAudio.stop(); this._betAudio.play()
+  },
+  _playAllin() {
+    if (!this._allinAudio) { this._allinAudio = wx.createInnerAudioContext(); this._allinAudio.src = '/audios/All in.mp3'; this._allinAudio.volume = 1.0 }
+    this._allinAudio.stop(); this._allinAudio.play()
+  },
+  _playFold() {
+    if (!this._foldAudio) { this._foldAudio = wx.createInnerAudioContext(); this._foldAudio.src = '/audios/flod.mp3'; this._foldAudio.volume = 0.4 }
+    this._foldAudio.stop(); this._foldAudio.play()
+  },
+  _playCheck() {
+    if (!this._checkAudio) { this._checkAudio = wx.createInnerAudioContext(); this._checkAudio.src = '/audios/check.mp3'; this._checkAudio.volume = 1.0 }
+    this._checkAudio.stop(); this._checkAudio.play()
+  },
+  _playCard() {
+    const audio = wx.createInnerAudioContext()
+    audio.src = '/audios/card.mp3'
+    audio.volume = 0.8
+    audio.play()
+    audio.onEnded(() => audio.destroy())
+    audio.onError(() => audio.destroy())
+  },
+
+  _destroyAudios() {
+    ['_betAudio', '_allinAudio', '_foldAudio', '_checkAudio'].forEach(key => {
+      if (this[key]) { try { this[key].destroy() } catch (e) {} this[key] = null }
     })
   },
 })

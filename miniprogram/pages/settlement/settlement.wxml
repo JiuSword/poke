@@ -1,4 +1,8 @@
 <!-- pages/settlement/settlement.wxml -->
+<wxs module="fmt">
+  function lastChar(s) { return s ? s[s.length - 1] : '?'; }
+  module.exports = { lastChar: lastChar };
+</wxs>
 <view class="container">
   <text class="title">游戏结算</text>
 
@@ -10,7 +14,7 @@
 
       <view class="player-info">
         <image wx:if="{{item.avatar}}" class="avatar" src="{{item.avatar}}" mode="aspectFill" />
-        <view wx:else class="avatar-placeholder">{{item.nickname[0]}}</view>
+        <view wx:else class="avatar-placeholder">{{fmt.lastChar(item.nickname)}}</view>
         <view class="name-area">
           <text class="player-name">{{item.nickname}}{{item.isMe ? '（我）' : ''}}</text>
           <text class="chips-delta {{item.chipsDelta >= 0 ? 'positive' : 'negative'}}">

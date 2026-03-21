@@ -1,4 +1,8 @@
 <!-- pages/room/join/join.wxml -->
+<wxs module="fmt">
+  function lastChar(s) { return s ? s[s.length - 1] : '?'; }
+  module.exports = { lastChar: lastChar };
+</wxs>
 <view class="container">
   <view class="join-card card">
     <text class="title">输入房间号</text>
@@ -8,5 +12,39 @@
   <button class="btn-primary join-btn" bindtap="onJoin" loading="{{loading}}" disabled="{{roomCode.length !== 6}}">
     加入房间
   </button>
+
+  <!-- 公开房间列表 -->
+  <view class="section-header">
+    <text class="section-title">公开房间</text>
+    <text class="refresh-btn" bindtap="loadPublicRooms">刷新</text>
+  </view>
+
+  <view wx:if="{{roomsLoading}}" class="rooms-loading">加载中…</view>
+  <view wx:elif="{{publicRooms.length === 0}}" class="rooms-empty">暂无公开房间</view>
+  <view wx:else class="rooms-list">
+    <view wx:for="{{publicRooms}}" wx:key="roomId" class="room-item card"
+      bindtap="onJoin" data-room-code="{{item.roomCode}}">
+      <view class="room-meta">
+        <view class="room-code-row">
+          <view class="room-code">#{{item.roomCode}}</view>
+          <view class="room-status {{item.status === 'playing' ? 'status-playing' : 'status-waiting'}}">{{item.status === 'playing' ? '游戏中' : '等待中'}}</view>
+        </view>
+        <text class="room-config">小盲 {{item.config.smallBlind}} · 买入 {{item.config.buyInChips}}</text>
+      </view>
+      <view class="room-seats">
+        <view wx:for="{{item.seats}}" wx:for-item="seat" wx:key="seatIndex" class="seat-avatar-wrap">
+          <block wx:if="{{seat.openid}}">
+            <image wx:if="{{seat.avatar}}" class="seat-avatar" src="{{seat.avatar}}" mode="aspectFill" />
+            <view wx:else class="seat-avatar seat-avatar-placeholder">{{fmt.lastChar(seat.nickname)}}</view>
+          </block>
+          <block wx:else>
+            <view class="seat-empty" />
+          </block>
+        </view>
+        <text class="seat-count">{{item.filledCount}}/{{item.config.maxPlayers}}人</text>
+      </view>
+    </view>
+  </view>
+
   <view class="safe-bottom"></view>
 </view>

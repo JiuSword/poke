@@ -16,6 +16,7 @@ Page({
   },
 
   watchKey: null,
+  heartbeatInterval: null,
 
   onLoad(options) {
     const myOpenid = app.globalData.userInfo?._openid || ''
@@ -26,10 +27,33 @@ Page({
       myOpenid,
     })
     this.startWatch()
+    this.startHeartbeat(options.roomId)
   },
 
   onUnload() {
     if (this.watchKey) watchManager.unwatch(this.watchKey)
+    this.stopHeartbeat()
+  },
+
+  startHeartbeat(roomId) {
+    this.stopHeartbeat()
+    const sendBeat = () => {
+      const { myOpenid } = this.data
+      if (!myOpenid || !roomId) return
+      wx.cloud.callFunction({
+        name: 'room-manage',
+        data: { action: 'heartbeat', roomId, openid: myOpenid },
+      }).catch(() => {})
+    }
+    sendBeat()
+    this.heartbeatInterval = setInterval(sendBeat, 30000)
+  },
+
+  stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval)
+      this.heartbeatInterval = null
+    }
   },
 
   onAppShow() {

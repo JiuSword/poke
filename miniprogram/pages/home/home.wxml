@@ -5,9 +5,9 @@
     <text class="loading-text">登录中...</text>
   </view>
 
-  <block wx:else>
+  <view wx:else class="content-wrap">
   <!-- 用户信息 -->
-  <view class="user-card card">
+  <view class="user-card">
     <image class="avatar" src="{{userInfo.avatar}}" mode="aspectFill" />
     <view class="user-info">
       <text class="nickname">{{userInfo.nickname}}</text>
@@ -28,19 +28,19 @@
     <view class="menu-item" bindtap="onJoinRoom">
       <text class="menu-icon">🚪</text>
       <text class="menu-label">加入房间</text>
-      <text class="menu-desc">输入房间号</text>
+      <text class="menu-desc">输入房间号/搜索房间</text>
     </view>
     <view class="menu-item" bindtap="onAIPractice">
       <text class="menu-icon">🤖</text>
       <text class="menu-label">AI 练习</text>
-      <text class="menu-desc">对战机器人</text>
+      <text class="menu-desc">对战排行榜</text>
     </view>
     <view class="menu-item" bindtap="onProfile">
       <text class="menu-icon">👤</text>
       <text class="menu-label">个人中心</text>
-      <text class="menu-desc">战绩/记录</text>
+      <text class="menu-desc">战绩/昵称修改</text>
     </view>
   </view>
-  </block>
+  </view>
   <view class="safe-bottom"></view>
 </view>

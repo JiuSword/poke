@@ -188,6 +188,29 @@ async function newRound(openid, event) {
 
 async function endSession(openid, event) {
   const { sessionId } = event
+  const sessionRes = await db.collection('ai_sessions').doc(sessionId).get()
+  const session = sessionRes.data
+
+  if (session && session.playerStates) {
+    // 计算本次对战结果：玩家筹码 vs 初始筹码
+    const BUY_IN = 10000
+    const playerPs = session.playerStates[0]
+    const finalChips = playerPs ? (playerPs.chips || 0) : 0
+    const chipsWon = finalChips - BUY_IN  // 正=赢，负=输
+    const isWin = chipsWon > 0
+
+    // 更新 users.aiStats（累计数据）
+    const _ = db.command
+    await db.collection('users').where({ _openid: openid }).update({
+      data: {
+        'aiStats.totalGames': _.inc(1),
+        'aiStats.totalWins': _.inc(isWin ? 1 : 0),
+        'aiStats.totalChipsWon': _.inc(chipsWon),
+        'aiStats.updatedAt': db.serverDate(),
+      },
+    })
+  }
+
   await db.collection('ai_sessions').doc(sessionId).update({
     data: { status: 'ended', updatedAt: db.serverDate() },
   })
@@ -277,7 +300,9 @@ function applyAction(state, actorIndex, action, amount) {
 
 function runAI(state) {
   let s = state
-  let safety = s.playerStates.length * 4
+  // 安全计数：每个玩家最多行动 playerCount 次（应对加注后重新行动的情况）
+  const playerCount = s.playerStates.filter(p => p.status !== 'folded' && p.status !== 'out').length
+  let safety = playerCount * playerCount * 3
 
   while (s.currentActorIndex !== 0 && s.currentActorIndex !== -1 && safety-- > 0) {
     if (isRoundOver(s) || isPhaseComplete(s) || isAllAllin(s)) break

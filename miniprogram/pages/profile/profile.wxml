@@ -69,7 +69,7 @@
       <view class="record-header">
         <view class="record-left">
           <text class="record-time">{{item.timeDisplay}}</text>
-          <text class="record-room">房间 {{item.roomId}}</text>
+          <text class="record-room">房间号 {{item.roomCode || item.roomId}}</text>
         </view>
         <view class="record-right">
           <text class="record-delta {{item.pointsDelta >= 0 ? 'points-positive' : 'points-negative'}}">
@@ -81,12 +81,17 @@
 
       <!-- 展开明细 -->
       <view wx:if="{{expandedIds[item._id]}}" class="record-detail">
+        <!-- 自己的筹码变化 -->
         <view class="detail-row">
-          <text>筹码变化: {{item.chipsDelta >= 0 ? '+' : ''}}{{item.chipsDelta}}</text>
-          <text wx:if="{{item.handRank}}">牌型: {{item.handRank}}</text>
+          <text class="detail-self">我: {{item.chipsDelta >= 0 ? '+' : ''}}{{item.chipsDelta}} 筹码</text>
+          <text class="detail-chips-end">持有 {{item.chipsEnd}}</text>
         </view>
-        <view wx:for="{{item.opponents}}" wx:key="openid" class="opponent-row">
-          <text>{{item.nickname}}: {{item.chipsDelta >= 0 ? '+' : ''}}{{item.chipsDelta}} 筹码</text>
+        <!-- 所有参与玩家 -->
+        <view wx:for="{{item.opponents}}" wx:key="openid" wx:for-item="opp" class="opponent-row">
+          <text class="opp-name">{{opp.nickname}}</text>
+          <text class="opp-chips {{opp.chipsDelta >= 0 ? 'positive' : 'negative'}}">
+            {{opp.chipsDelta >= 0 ? '+' : ''}}{{opp.chipsDelta}} 筹码
+          </text>
         </view>
       </view>
     </view>

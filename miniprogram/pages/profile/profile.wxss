@@ -28,8 +28,14 @@
 .record-after { font-size: 22rpx; color: rgba(255,255,255,0.4); }
 
 .record-detail { margin-top: 20rpx; padding-top: 20rpx; border-top: 1rpx solid rgba(255,255,255,0.08); }
-.detail-row { display: flex; justify-content: space-between; font-size: 24rpx; color: rgba(255,255,255,0.6); margin-bottom: 8rpx; }
-.opponent-row { font-size: 22rpx; color: rgba(255,255,255,0.4); padding: 4rpx 0; }
+.detail-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx; }
+.detail-self { font-size: 24rpx; color: rgba(255,255,255,0.7); }
+.detail-chips-end { font-size: 22rpx; color: rgba(255,255,255,0.4); }
+.opponent-row { display: flex; justify-content: space-between; align-items: center; padding: 6rpx 0; border-top: 1rpx solid rgba(255,255,255,0.05); }
+.opp-name { font-size: 24rpx; color: rgba(255,255,255,0.6); }
+.opp-chips { font-size: 24rpx; font-weight: bold; }
+.opp-chips.positive { color: #4caf50; }
+.opp-chips.negative { color: #f44336; }
 
 .loading-text, .no-more, .empty-text { text-align: center; color: rgba(255,255,255,0.3); font-size: 26rpx; padding: 40rpx; }
 
