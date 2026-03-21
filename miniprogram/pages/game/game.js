@@ -81,7 +81,10 @@ Page({
     sliderMax: 10000,
     isAllinMode: false,
     callIsAllin: false,
+    callAmount: 0,
     canRaise: true,
+    smallBlind: 10,
+    sliderStep: 10,
     // 操作中
     acting: false,
     // 本手结算
@@ -110,7 +113,7 @@ Page({
   onLoad(options) {
     const myOpenid = app.globalData.userInfo?._openid || ''
     const statusBarHeight = app.globalData.statusBarHeight || 20
-    const safeAreaBottom = app.globalData.safeAreaBottom || 0
+    const safeAreaBottom = app.globalData.safeAreaBottom || 16
     this.setData({
       roomId: options.roomId,
       roomCode: options.roomCode || '',
@@ -121,9 +124,22 @@ Page({
       safeAreaBottom,
     })
     this.startWatch()
+    // 获取房间小盲注配置，用于滑动条步距
+    this.loadRoomConfig(options.roomId)
+  },
+
+  async loadRoomConfig(roomId) {
+    try {
+      const { roomManage } = require('../../utils/cloud')
+      const res = await roomManage('getRoomInfo', { roomId })
+      const sb = res.data?.config?.smallBlind || 10
+      this.setData({ smallBlind: sb, sliderStep: sb })
+    } catch (e) {}
   },
 
   onUnload() {
+    if (this._betAudio) { this._betAudio.destroy(); this._betAudio = null }
+    if (this._allinAudio) { this._allinAudio.destroy(); this._allinAudio = null }
     this.clearCountdown()
     this.watchKeys.forEach(k => watchManager.unwatch(k))
   },
@@ -162,6 +178,14 @@ Page({
     const prevCardCount = this.data.communityCards.length
     const newCommunityCards = (roomView.communityCards || []).map(formatCard)
 
+    // 新翻牌时依次播放音效（每张间隔 150ms 对应翻牌动画）
+    const newCount = newCommunityCards.length - prevCardCount
+    if (newCount > 0) {
+      for (let i = 0; i < newCount; i++) {
+        setTimeout(() => this._playCard(), i * 150)
+      }
+    }
+
     // 计算最优牌型
     const rawCommunity = roomView.communityCards || []
     const myBestHand = evaluateHandDisplay(this.data.myCards, rawCommunity)
@@ -169,6 +193,11 @@ Page({
     // 同步暂停状态
     const isPaused = !!roomView.isPaused
     const pausedBy = roomView.pausedBy || null
+
+    // 同步结算中状态（非房主玩家通过此感知）
+    if (roomView.isSettling && !this.data.isSettling) {
+      this.setData({ isSettling: true })
+    }
 
     // 计算跟注/加注状态
     const myChips = mySeat ? mySeat.chips : 0
@@ -193,6 +222,7 @@ Page({
       myRefillCost: mySeat ? (mySeat.totalRefillCost || 0) : 0,
       isMyTurn,
       callIsAllin,
+      callAmount,
       canRaise,
       myBestHand,
       isPaused,
@@ -341,21 +371,28 @@ Page({
 
   setRaiseAmount(amount) {
     const myChips = this.data.myChips || 1
-    const isAllinMode = amount >= myChips
+    const callAmount = this.data.callAmount || 0
+    // 加注上限 = 全押时的加注额（myChips - callAmount）
+    const maxRaise = Math.max(myChips - callAmount, 0)
+    const isAllinMode = amount >= maxRaise
     this.setData({ raiseAmount: amount, isAllinMode })
   },
 
   onToggleRaiseInput() {
     if (this.data.showRaiseInput) {
-      // 面板已展开：第二次点击 = 确认加注
       this.onRaise()
     } else {
-      // 展开面板，初始化滑动条
       const minRaise = this.data.minRaise || 1
       const myChips = this.data.myChips || 1
-      // 默认值：优先用已设置的 raiseAmount，但不能超过 myChips，也不能低于 minRaise
-      const initAmount = Math.min(Math.max(this.data.raiseAmount || minRaise, minRaise), myChips)
-      this.setData({ showRaiseInput: true, sliderMin: minRaise, sliderMax: myChips })
+      const callAmount = this.data.callAmount || 0
+      // slider 范围：minRaise ~ (myChips - callAmount)，即纯加注额的范围
+      const maxRaise = Math.max(myChips - callAmount, minRaise)
+      const initAmount = Math.min(Math.max(this.data.raiseAmount || minRaise, minRaise), maxRaise)
+      this.setData({
+        showRaiseInput: true,
+        sliderMin: minRaise,
+        sliderMax: maxRaise,
+      })
       this.setRaiseAmount(initAmount)
     }
   },
@@ -368,15 +405,18 @@ Page({
     const amount = Number(e.currentTarget.dataset.amount)
     const myChips = this.data.myChips || 1
     const minRaise = this.data.minRaise || 1
-    const clamped = Math.min(Math.max(amount, minRaise), myChips)
+    const callAmount = this.data.callAmount || 0
+    const maxRaise = Math.max(myChips - callAmount, minRaise)
+    const clamped = Math.min(Math.max(amount, minRaise), maxRaise)
     this.setRaiseAmount(clamped)
   },
 
   async onRaise() {
-    const { myChips, minRaise } = this.data
-    // 确保 raiseAmount 在合法范围内
-    const safeAmount = Math.min(Math.max(this.data.raiseAmount || minRaise, minRaise), myChips)
-    if (safeAmount >= myChips) {
+    const { myChips, minRaise, callAmount } = this.data
+    const maxRaise = Math.max(myChips - (callAmount || 0), 0)
+    const safeAmount = Math.min(Math.max(this.data.raiseAmount || minRaise, minRaise), maxRaise)
+    // 加注额达到上限时走 allin
+    if (safeAmount >= maxRaise) {
       await this.doAction('allin', myChips)
     } else {
       await this.doAction('raise', safeAmount)
@@ -440,6 +480,12 @@ Page({
   async doAction(action, amount) {
     if (this.data.acting || !this.data.isMyTurn) return
     this.setData({ acting: true, showRaiseInput: false })
+    // 下注类操作播放音效
+    if (action === 'allin') {
+      this._playAllin()
+    } else if (action === 'call' || action === 'raise') {
+      this._playBet()
+    }
     try {
       await gameAction('playerAction', {
         roomId: this.data.roomId,
@@ -452,6 +498,36 @@ Page({
     } finally {
       this.setData({ acting: false })
     }
+  },
+
+  _playBet() {
+    if (!this._betAudio) {
+      this._betAudio = wx.createInnerAudioContext()
+      this._betAudio.src = '/audios/bet.mp3'
+      this._betAudio.volume = 0.8
+    }
+    this._betAudio.stop()
+    this._betAudio.play()
+  },
+
+  _playAllin() {
+    if (!this._allinAudio) {
+      this._allinAudio = wx.createInnerAudioContext()
+      this._allinAudio.src = '/audios/All in.mp3'
+      this._allinAudio.volume = 1.0
+    }
+    this._allinAudio.stop()
+    this._allinAudio.play()
+  },
+
+  _playCard() {
+    // 每次创建新实例，避免多张牌快速翻出时互相打断
+    const audio = wx.createInnerAudioContext()
+    audio.src = '/audios/card.mp3'
+    audio.volume = 0.7
+    audio.play()
+    audio.onEnded(() => audio.destroy())
+    audio.onError(() => audio.destroy())
   },
 
   // 计算按钮文字

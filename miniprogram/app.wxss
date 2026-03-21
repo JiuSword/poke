@@ -9,10 +9,11 @@ page {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* 底部固定操作区安全区占位 */
+/* 底部固定操作区安全区占位：iOS 用 safe-area，安卓兜底 16px */
 .safe-bottom {
   height: constant(safe-area-inset-bottom);
   height: env(safe-area-inset-bottom);
+  min-height: 16px;
 }
 
 .container {

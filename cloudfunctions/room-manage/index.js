@@ -26,7 +26,7 @@ exports.main = async (event, context) => {
 
 async function createRoom(openid, event) {
   const { config } = event
-  const { smallBlind = 10, maxPlayers = 6, buyInChips = 1000, pointsPerChip = 0.01 } = config || {}
+  const { smallBlind = 10, maxPlayers = 6, buyInChips = 1000, pointsPerChip = 0.01, pointsIn, chipsOut, actionTimeoutSec = 30 } = config || {}
 
   // 校验积分是否够入座一局
   const userRes = await db.collection('users').where({ _openid: openid }).get()
@@ -67,6 +67,9 @@ async function createRoom(openid, event) {
       maxPlayers,
       buyInChips,
       pointsPerChip,
+      pointsIn: pointsIn || Math.round(pointsPerChip * 1000),
+      chipsOut: chipsOut || 1000,
+      actionTimeoutSec,
     },
     seats,
     currentGameRoundId: null,
@@ -303,6 +306,11 @@ async function endGame(openid, event) {
   const room = roomRes.data
   if (!room) return { code: 404, msg: '房间不存在' }
   if (room.hostOpenid !== openid) return { code: 403, msg: '只有房主可以结束游戏' }
+
+  // 先广播结算中状态，所有玩家立即看到遮罩
+  await db.collection('room_views').doc(roomId).update({
+    data: { isSettling: true, updatedAt: db.serverDate() },
+  })
 
   // 调用 settlement 做积分换算并标记房间结束
   const result = await cloud.callFunction({

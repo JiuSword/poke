@@ -215,19 +215,37 @@ async function endRound(event) {
   const room = roomRes.data
   if (!round) return { code: 404, msg: '牌局不存在' }
 
-  // 全员 allin 时补齐剩余公共牌
+  // 全员 allin 时逐阶段翻牌，每阶段间隔 1.2s，翻完后再等 1.5s 展示结果
   let communityCards = round.communityCards || []
   let deck = round.deck || []
+
   if (communityCards.length < 5) {
-    const needed = 5 - communityCards.length
-    const { cards, remaining } = deal(deck, needed)
-    communityCards = [...communityCards, ...cards]
-    deck = remaining
+    // 按 flop(3张) → turn(1张) → river(1张) 逐步翻出
+    const revealSteps = []
+    if (communityCards.length < 3) revealSteps.push(3 - communityCards.length, 1, 1)
+    else if (communityCards.length < 4) revealSteps.push(1, 1)
+    else if (communityCards.length < 5) revealSteps.push(1)
+
+    for (const count of revealSteps) {
+      const { cards, remaining } = deal(deck, count)
+      deck = remaining
+      communityCards = [...communityCards, ...cards]
+      // 每步先更新 room_views 展示新翻的牌
+      await db.collection('room_views').doc(roomId).update({
+        data: { communityCards, updatedAt: db.serverDate() },
+      })
+      // 等待客户端看到翻牌动画
+      await new Promise(resolve => setTimeout(resolve, 1200))
+    }
+
     // 更新 game_rounds 里的公共牌
     await db.collection('game_rounds').doc(round._id).update({
       data: { communityCards, deck },
     })
     round = { ...round, communityCards, deck }
+
+    // 所有牌翻完后再等 1.5s 才展示结果
+    await new Promise(resolve => setTimeout(resolve, 1500))
   }
 
   // 所有未弃牌玩家
@@ -265,8 +283,8 @@ async function endRound(event) {
     const seat = room.seats.find(s => s.openid === openid)
     const handResults = {}
     const p = round.playerStates.find(ps => ps && ps.openid === openid)
-    if (p && round.communityCards.length > 0) {
-      const allCards = [...p.holeCards, ...round.communityCards]
+    if (p && communityCards.length > 0) {
+      const allCards = [...p.holeCards, ...communityCards]
       if (allCards.length >= 5) handResults[openid] = evaluateBestHand(allCards)
     }
     return {

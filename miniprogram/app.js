@@ -17,9 +17,10 @@ App({
     try {
       const sys = wx.getSystemInfoSync()
       this.globalData.statusBarHeight = sys.statusBarHeight || 20
-      // 底部安全区 = 屏幕高度 - 可用高度 - 状态栏
-      const safeBottom = sys.screenHeight - sys.safeArea.bottom
-      this.globalData.safeAreaBottom = safeBottom > 0 ? safeBottom : 0
+      // 底部安全区：iOS 用 safeArea 计算，安卓最少保留 16px 边距
+      const safeBottom = sys.safeArea ? sys.screenHeight - sys.safeArea.bottom : 0
+      const MIN_BOTTOM = 16 // 安卓兜底最小边距（px）
+      this.globalData.safeAreaBottom = Math.max(safeBottom, MIN_BOTTOM)
     } catch (e) {}
 
     this.silentLogin()
