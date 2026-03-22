@@ -42,18 +42,7 @@ async function login(openid, event) {
     const res = await db.collection('users').where({ _openid: openid }).get()
 
     if (res.data.length > 0) {
-      const user = res.data[0]
-      // 如果有 cloudAva（永久 fileID），刷新 avatar 为临时 URL 并更新数据库
-      if (user.cloudAva) {
-        const tempURL = await getTempURL(user.cloudAva)
-        if (tempURL && tempURL !== user.cloudAva) {
-          await db.collection('users').where({ _openid: openid }).update({
-            data: { avatar: tempURL, updatedAt: db.serverDate() },
-          })
-          user.avatar = tempURL
-        }
-      }
-      return { code: 0, data: user, isNew: false }
+      return { code: 0, data: res.data[0], isNew: false }
     }
 
     // 首次登录，创建账号
@@ -82,21 +71,10 @@ async function updateProfile(openid, event) {
   try {
     const update = { updatedAt: db.serverDate() }
     if (event.nickname) update.nickname = event.nickname
-
-    // avatar 字段：如果传入的是 cloud:// fileID，存到 cloudAva，并刷新 avatar 为临时 URL
-    // 如果传入的是普通 URL，直接存 avatar
+    // avatar 直接存（base64 或 URL），不再需要 cloudAva 转换
     if (event.avatar) {
-      if (event.avatar.startsWith('cloud://')) {
-        update.cloudAva = event.avatar
-        const tempURL = await getTempURL(event.avatar)
-        update.avatar = tempURL
-      } else {
-        update.avatar = event.avatar
-        // 清除旧的 cloudAva（如果有）
-        update.cloudAva = ''
-      }
+      update.avatar = event.avatar
     }
-
     await db.collection('users').where({ _openid: openid }).update({ data: update })
     return { code: 0 }
   } catch (e) {

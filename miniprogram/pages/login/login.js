@@ -2,6 +2,29 @@
 const { userAuth } = require('../../utils/cloud')
 const app = getApp()
 
+// 压缩图片并转 base64
+async function compressToBase64(filePath) {
+  // 先压缩到较小尺寸
+  const compressed = await new Promise((resolve, reject) => {
+    wx.compressImage({
+      src: filePath,
+      quality: 40,
+      success: resolve,
+      fail: reject,
+    })
+  })
+  // 读取文件转 base64
+  const base64 = await new Promise((resolve, reject) => {
+    wx.getFileSystemManager().readFile({
+      filePath: compressed.tempFilePath,
+      encoding: 'base64',
+      success: res => resolve('data:image/jpeg;base64,' + res.data),
+      fail: reject,
+    })
+  })
+  return base64
+}
+
 Page({
   data: {
     loading: false,
@@ -74,23 +97,11 @@ Page({
     }
     this.setData({ loading: true })
     try {
-      // 将临时头像上传到云存储，获取永久 URL
-      const openid = app.globalData.userInfo?._openid || Date.now()
-      const cloudPath = `avatars/${openid}.jpg`
-      const uploadRes = await new Promise((resolve, reject) => {
-        wx.cloud.uploadFile({
-          cloudPath,
-          filePath: avatar,
-          success: resolve,
-          fail: reject,
-        })
-      })
-      const fileID = uploadRes.fileID
-      // 传 fileID 给云函数，云函数会存 cloudAva 并刷新 avatar 为临时 URL
-      await userAuth('updateProfile', { nickname: nickname.trim(), avatar: fileID })
-      // 重新获取最新用户信息（含刷新后的临时 URL）
-      const profileRes = await userAuth('getProfile')
-      app.globalData.userInfo = { ...app.globalData.userInfo, ...profileRes.data }
+      // 压缩头像并转 base64 存储（永不过期，体积小）
+      const base64Avatar = await compressToBase64(avatar)
+      await userAuth('updateProfile', { nickname: nickname.trim(), avatar: base64Avatar })
+      app.globalData.userInfo.nickname = nickname.trim()
+      app.globalData.userInfo.avatar = base64Avatar
       wx.reLaunch({ url: '/pages/home/home' })
     } catch (e) {
       console.error('保存失败', e)

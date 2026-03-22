@@ -52,9 +52,11 @@ App({
 
       if (res.code === 0) {
         this.globalData.userInfo = res.data
-        // login 云函数已在返回前刷新了 avatar 为临时 URL
-        // 没有头像或是新用户：跳转设置资料
-        if (res.data.isNew || !res.data.avatar) {
+        // 旧头像迁移：cloud:// 或 http 链接 → 跳转重新设置头像
+        const avatar = res.data.avatar || ''
+        const needMigrate = avatar && !avatar.startsWith('data:image')
+        // 没有头像、新用户、或头像不是 base64：跳转设置资料
+        if (res.data.isNew || !avatar || needMigrate) {
           // 只在首页等待时才跳转，避免重复跳转
           const pages = getCurrentPages()
           const current = pages[pages.length - 1]
@@ -85,14 +87,4 @@ App({
     }
   },
 
-  // 将 cloud:// fileID 转为临时 URL 更新 globalData（每次登录刷新，不更新数据库）
-  async _migrateAvatar(fileID) {
-    try {
-      const res = await new Promise((resolve, reject) => {
-        wx.cloud.getTempFileURL({ fileList: [fileID], success: resolve, fail: reject })
-      })
-      const tempURL = res.fileList[0]?.tempFileURL
-      if (tempURL) this.globalData.userInfo.avatar = tempURL
-    } catch (e) {}
-  },
 })

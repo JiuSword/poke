@@ -18,7 +18,14 @@ async function settle(event) {
   if (!room) return { code: 404, msg: '房间不存在' }
 
   const { pointsPerChip, buyInChips } = room.config
-  const players = room.seats.filter(s => s.openid)
+  // 在座玩家 + 中途退出的玩家（exitedPlayers）都参与结算
+  const seatedPlayers = room.seats.filter(s => s.openid)
+  const exitedPlayers = room.exitedPlayers || []
+  const players = [
+    ...seatedPlayers,
+    // 排除已在座位上的（防止重复）
+    ...exitedPlayers.filter(ep => !seatedPlayers.some(s => s.openid === ep.openid)),
+  ]
   if (players.length === 0) return { code: 0, data: { settlements: [] } }
 
   // 每人基准筹码 = initialChips（首次 buyInChips，每次补充时累加）
@@ -118,7 +125,7 @@ async function settle(event) {
   }
 
   await Promise.all([
-    db.collection('rooms').doc(roomId).update({ data: { status: 'game_over', lastActivityAt: now } }),
+    db.collection('rooms').doc(roomId).update({ data: { status: 'game_over', exitedPlayers: [], lastActivityAt: now } }),
     db.collection('room_views').doc(roomId).update({
       data: {
         phase: 'game_over',

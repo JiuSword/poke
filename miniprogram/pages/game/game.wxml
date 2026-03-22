@@ -148,6 +148,11 @@
     </view>
   </view>
 
+  <!-- 加注面板常驻切换按钮 -->
+  <view class="raise-pin-bar" bindtap="onToggleRaisePin">
+    <image class="raise-pin-icon {{raisePanelPinned ? 'pinned' : ''}}" src="/images/ui/展开.png" mode="aspectFit" />
+  </view>
+
   <!-- 我的区域 -->
   <view class="my-zone" style="padding-bottom:calc(24rpx + {{safeAreaBottom}}px);">
 
@@ -169,8 +174,8 @@
     <view wx:if="{{!isSpectator && phase !== 'ended' && phase !== 'dismissed' && phase !== 'game_over'}}"
       class="action-zone {{!isMyTurn || isPaused ? 'action-zone-disabled' : ''}}">
 
-      <!-- 加注展开面板 -->
-      <view wx:if="{{showRaiseInput}}" class="raise-panel">
+      <!-- 加注展开面板（手动展开 或 常驻时显示） -->
+      <view wx:if="{{showRaiseInput || raisePanelPinned}}" class="raise-panel">
         <!-- 金额显示 + 输入框 -->
         <view class="raise-amount-row">
           <text class="raise-amount-label">{{isAllinMode ? 'All In' : '加注'}}</text>
@@ -179,8 +184,8 @@
             <input class="raise-amount-input" type="number" value="{{raiseAmount}}" bindinput="onRaiseAmountInput" />
             <view class="stepper-btn" bindtap="onRaiseStep" data-dir="1">＋</view>
           </view>
-          <button class="raise-confirm-btn {{isAllinMode ? 'allin-confirm' : ''}}" bindtap="onRaise" disabled="{{!isMyTurn || isPaused}}">
-            {{isAllinMode ? 'Allin' : '确认'}}
+          <button class="raise-confirm-btn {{isAllinMode ? 'allin-confirm' : ''}}" bindtap="onRaise" disabled="{{acting || !isMyTurn || isPaused}}">
+            {{isAllinMode ? 'All in' : '确认加注'+ ' ' + raiseAmount}}
           </button>
         </view>
 
@@ -222,10 +227,10 @@
           <block wx:else>跟注 {{callAmount}}</block>
         </button>
         <button
-          class="act-btn {{!canRaise ? 'raise-disabled' : (showRaiseInput ? (isAllinMode ? 'allin-confirm-btn' : 'raise-confirm-active') : 'raise-btn')}}"
+          class="act-btn {{!canRaise ? 'raise-disabled' : (showRaiseInput ? (isAllinMode ? 'allin-confirm-btn' : 'raise-btn') : 'raise-btn')}}"
           bindtap="onToggleRaiseInput"
           disabled="{{acting || !canRaise || !isMyTurn || isPaused}}">
-          {{showRaiseInput ? (isAllinMode ? '✓ All In' : '✓ 确认加注 ' + raiseAmount) : '加注' + (raiseAmount > 0 ? ' ' + raiseAmount : '')}}
+          {{showRaiseInput ? (isAllinMode ? '✓ All In' : '✓ 确认加注 ') : '加注'}}
         </button>
       </view>
 

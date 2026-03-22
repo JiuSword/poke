@@ -85,6 +85,7 @@ Page({
     canRaise: true,
     smallBlind: 10,
     sliderStep: 10,
+    raisePanelPinned: false,
     // 操作中
     acting: false,
     // 本手结算
@@ -313,7 +314,13 @@ Page({
     // 重置加注默认值：clamp 到 [minRaise, myChips]，同步更新 isAllinMode
     const newMinRaise = roomView.minRaise || 0
     if (newMinRaise > 0 && myChips > 0) {
+      const callAmt = Math.max(0, (roomView.currentBet || 0) - (mySeat?.betInPhase || 0))
+      const maxRaise = Math.max(myChips - callAmt, newMinRaise)
       this.setRaiseAmount(Math.min(newMinRaise, myChips))
+      // 常驻时同步刷新 slider 范围
+      if (this.data.raisePanelPinned) {
+        this.setData({ sliderMin: newMinRaise, sliderMax: maxRaise })
+      }
     }
 
     // 暂停时停止倒计时
@@ -479,14 +486,34 @@ Page({
     this.setData({ raiseAmount: amount, isAllinMode })
   },
 
-  onToggleRaiseInput() {
-    if (this.data.showRaiseInput) {
-      this.onRaise()
-    } else {
+  onToggleRaisePin() {
+    const pinned = !this.data.raisePanelPinned
+    this.setData({ raisePanelPinned: pinned })
+    if (pinned && !this.data.showRaiseInput) {
+      // 常驻时自动展开
       const minRaise = this.data.minRaise || 1
       const myChips = this.data.myChips || 1
       const callAmount = this.data.callAmount || 0
-      // slider 范围：minRaise ~ (myChips - callAmount)，即纯加注额的范围
+      const maxRaise = Math.max(myChips - callAmount, minRaise)
+      const initAmount = Math.min(Math.max(this.data.raiseAmount || minRaise, minRaise), maxRaise)
+      this.setData({ showRaiseInput: true, sliderMin: minRaise, sliderMax: maxRaise })
+      this.setRaiseAmount(initAmount)
+    } else if (!pinned) {
+      // 取消常驻时收起
+      this.setData({ showRaiseInput: false })
+    }
+  },
+
+  onToggleRaiseInput() {
+    const { showRaiseInput, raisePanelPinned } = this.data
+    // 面板已展开（不管是手动还是常驻）：点击 = 确认加注
+    if (showRaiseInput || raisePanelPinned) {
+      this.onRaise()
+    } else {
+      // 展开面板
+      const minRaise = this.data.minRaise || 1
+      const myChips = this.data.myChips || 1
+      const callAmount = this.data.callAmount || 0
       const maxRaise = Math.max(myChips - callAmount, minRaise)
       const initAmount = Math.min(Math.max(this.data.raiseAmount || minRaise, minRaise), maxRaise)
       this.setData({
@@ -637,7 +664,8 @@ Page({
 
   async doAction(action, amount) {
     if (this.data.acting || !this.data.isMyTurn) return
-    this.setData({ acting: true, showRaiseInput: false })
+    // 常驻时保持面板展开，非常驻时关闭
+    this.setData({ acting: true, showRaiseInput: this.data.raisePanelPinned ? true : false })
     // 操作音效
     if (action === 'allin') {
       this._playAllin()

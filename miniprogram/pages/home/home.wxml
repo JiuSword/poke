@@ -28,7 +28,7 @@
     <view class="menu-item" bindtap="onJoinRoom">
       <text class="menu-icon">🚪</text>
       <text class="menu-label">加入房间</text>
-      <text class="menu-desc">输入房间号/搜索房间</text>
+      <text class="menu-desc">输入房间号/房间列表</text>
     </view>
     <view class="menu-item" bindtap="onAIPractice">
       <text class="menu-icon">🤖</text>

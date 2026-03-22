@@ -124,7 +124,10 @@ async function playerAction(openid, event) {
 
   // 判断是否只剩一人未弃牌
   if (isRoundOver(playerStates.filter(Boolean))) {
-    // 直接结束牌局
+    // 先同步 actionHistory 到 room_views，让其他玩家听到最后一次操作音效
+    await db.collection('room_views').doc(roomId).update({
+      data: { actionHistory: actionHistory.slice(-20), updatedAt: db.serverDate() },
+    })
     await db.collection('game_rounds').doc(gameRoundId).update({
       data: { playerStates, pot, currentBet, minRaise, actionHistory },
     })
@@ -142,6 +145,10 @@ async function playerAction(openid, event) {
     activePlayers.every(p => p.hasActed && p.betInPhase === currentBet)
 
   if (phaseComplete) {
+    // 先同步 actionHistory 到 room_views，让其他玩家听到最后一次操作音效
+    await db.collection('room_views').doc(roomId).update({
+      data: { actionHistory: actionHistory.slice(-20), updatedAt: db.serverDate() },
+    })
     await db.collection('game_rounds').doc(gameRoundId).update({
       data: { playerStates, pot, currentBet, minRaise, actionHistory },
     })

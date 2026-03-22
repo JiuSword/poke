@@ -3,6 +3,21 @@ const { userAuth } = require('../../utils/cloud')
 const { formatPoints, formatPointsDelta, formatTime, resolveAvatars } = require('../../utils/format')
 const app = getApp()
 
+async function compressToBase64(filePath) {
+  const compressed = await new Promise((resolve, reject) => {
+    wx.compressImage({ src: filePath, quality: 40, success: resolve, fail: reject })
+  })
+  const base64 = await new Promise((resolve, reject) => {
+    wx.getFileSystemManager().readFile({
+      filePath: compressed.tempFilePath,
+      encoding: 'base64',
+      success: res => resolve('data:image/jpeg;base64,' + res.data),
+      fail: reject,
+    })
+  })
+  return base64
+}
+
 Page({
   data: {
     userInfo: null,
@@ -91,25 +106,13 @@ Page({
 
   async onChooseAvatar(e) {
     const tempPath = e.detail.avatarUrl
-    wx.showLoading({ title: '上传中...', mask: true })
+    wx.showLoading({ title: '处理中...', mask: true })
     try {
-      const openid = app.globalData.userInfo?._openid || Date.now()
-      const uploadRes = await new Promise((resolve, reject) => {
-        wx.cloud.uploadFile({
-          cloudPath: `avatars/${openid}.jpg`,
-          filePath: tempPath,
-          success: resolve,
-          fail: reject,
-        })
-      })
-      const fileID = uploadRes.fileID
       const { userAuth } = require('../../utils/cloud')
-      // 传 fileID，云函数存 cloudAva 并刷新 avatar 为临时 URL
-      await userAuth('updateProfile', { avatar: fileID })
-      const profileRes = await userAuth('getProfile')
-      const newAvatar = profileRes.data.avatar
-      app.globalData.userInfo.avatar = newAvatar
-      this.setData({ 'userInfo.avatar': newAvatar })
+      const base64Avatar = await compressToBase64(tempPath)
+      await userAuth('updateProfile', { avatar: base64Avatar })
+      app.globalData.userInfo.avatar = base64Avatar
+      this.setData({ 'userInfo.avatar': base64Avatar })
       wx.showToast({ title: '头像已更新' })
     } catch (err) {
       wx.showToast({ title: '上传失败', icon: 'none' })

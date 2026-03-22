@@ -29,9 +29,10 @@ Page({
   },
 
   onShow() {
-    // 兜底：没有头像则跳回设置页（防止用户绕过设置）
+    // 兜底：没有头像或头像不是 base64（旧格式）则跳回设置页
     const userInfo = app.globalData.userInfo
-    if (userInfo && !userInfo.avatar) {
+    const avatar = userInfo?.avatar || ''
+    if (userInfo && (!avatar || !avatar.startsWith('data:image'))) {
       wx.reLaunch({ url: '/pages/login/login?step=profile' })
       return
     }

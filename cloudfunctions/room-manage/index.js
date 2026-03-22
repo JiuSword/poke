@@ -548,7 +548,7 @@ async function sitDown(openid, event) {
   return { code: 0 }
 }
 
-// 游戏中主动退出：服务端直接弃牌（如果轮到该玩家）+ 标记起立
+// 游戏中主动退出：弃牌 + 立即清空座位成为观战者
 async function leaveInGame(openid, event) {
   const { roomId } = event
 
@@ -559,27 +559,60 @@ async function leaveInGame(openid, event) {
   const seatIndex = room.seats.findIndex(s => s.openid === openid)
   if (seatIndex === -1) return { code: 400, msg: '未在房间' }
 
-  // 如果游戏进行中，尝试在服务端执行弃牌
+  const seat = room.seats[seatIndex]
+  const now = db.serverDate()
+
+  // Step1：游戏进行中，在 game_rounds 里标记该玩家弃牌
   if (room.status === 'playing' && room.currentGameRoundId) {
     try {
       const roundRes = await db.collection('game_rounds').doc(room.currentGameRoundId).get()
       const round = roundRes.data
       if (round && round.phase !== 'ended') {
         const ps = round.playerStates[seatIndex]
-        // 只有轮到该玩家且状态为 active 时才弃牌
-        if (ps && ps.status === 'active' && round.currentActorSeatIndex === seatIndex) {
-          await cloud.callFunction({
-            name: 'game-action',
-            data: {
-              action: 'playerAction',
-              playerAction: 'fold',
-              roomId,
-              gameRoundId: room.currentGameRoundId,
-              amount: 0,
-              _systemCall: true,
-              _openid: openid,
-            },
+        if (ps && ps.status === 'active') {
+          const newPlayerStates = round.playerStates.map((p, i) => {
+            if (i !== seatIndex || !p) return p
+            return { ...p, status: 'folded', hasActed: true }
           })
+          const newActionHistory = [...(round.actionHistory || []), {
+            seatIndex, openid, action: 'fold', amount: 0,
+            phase: round.phase, timestamp: now,
+          }]
+
+          // 检查弃牌后是否只剩一人
+          const remaining = newPlayerStates.filter(p => p && p.status !== 'folded' && p.status !== 'out')
+          const isCurrentActor = round.currentActorSeatIndex === seatIndex
+
+          if (remaining.length <= 1) {
+            // 只剩一人，先更新 playerStates 再触发结束
+            await db.collection('game_rounds').doc(round._id).update({
+              data: { playerStates: newPlayerStates, actionHistory: newActionHistory },
+            })
+            // 异步触发结束（不等待，避免超时）
+            cloud.callFunction({
+              name: 'game-engine',
+              data: { action: 'endRound', roomId, gameRoundId: room.currentGameRoundId },
+            }).catch(() => {})
+          } else if (isCurrentActor) {
+            // 轮到自己，通过 game-action 处理（推进到下一行动者）
+            await cloud.callFunction({
+              name: 'game-action',
+              data: {
+                action: 'playerAction', playerAction: 'fold',
+                roomId, gameRoundId: room.currentGameRoundId,
+                amount: 0, _systemCall: true, _openid: openid,
+              },
+            })
+          } else {
+            // 不是自己回合，直接更新 playerStates
+            await db.collection('game_rounds').doc(round._id).update({
+              data: { playerStates: newPlayerStates, actionHistory: newActionHistory },
+            })
+            // 同步 room_views 展示弃牌状态
+            await db.collection('room_views').doc(roomId).update({
+              data: { [`seats.${seatIndex}.status`]: 'folded', updatedAt: now },
+            })
+          }
         }
       }
     } catch (e) {
@@ -587,8 +620,52 @@ async function leaveInGame(openid, event) {
     }
   }
 
-  // 标记起立，本手结束后自动清空座位
-  return standUp(openid, event)
+  // Step2：立即清空座位，玩家变为观战者
+  // 把退出玩家的结算信息存入 exitedPlayers，供最终结算使用
+  const exitedPlayers = room.exitedPlayers || []
+  // 避免重复添加
+  const alreadyExited = exitedPlayers.some(p => p.openid === openid)
+  if (!alreadyExited) {
+    exitedPlayers.push({
+      openid: seat.openid,
+      nickname: seat.nickname,
+      avatar: seat.avatar || '',
+      chips: seat.chips || 0,
+      initialChips: seat.initialChips || 0,
+      totalRefillCost: seat.totalRefillCost || 0,
+    })
+  }
+
+  const spectators = room.spectators || []
+  const newSpectators = [...spectators, {
+    openid: seat.openid, nickname: seat.nickname, avatar: seat.avatar,
+    chips: seat.chips || 0, initialChips: seat.initialChips || 0,
+    totalRefillCost: seat.totalRefillCost || 0,
+  }]
+
+  const seatClear = { spectators: newSpectators, exitedPlayers, lastActivityAt: now }
+  seatClear[`seats.${seatIndex}.openid`] = null
+  seatClear[`seats.${seatIndex}.nickname`] = null
+  seatClear[`seats.${seatIndex}.avatar`] = null
+  seatClear[`seats.${seatIndex}.chips`] = 0
+  seatClear[`seats.${seatIndex}.initialChips`] = 0
+  seatClear[`seats.${seatIndex}.totalRefillCost`] = 0
+  seatClear[`seats.${seatIndex}.status`] = 'waiting'
+  seatClear[`seats.${seatIndex}.isReady`] = false
+  seatClear[`seats.${seatIndex}.pendingAction`] = null
+
+  await db.collection('rooms').doc(roomId).update({ data: seatClear })
+
+  const viewClear = { spectators: newSpectators, updatedAt: now }
+  viewClear[`seats.${seatIndex}.openid`] = null
+  viewClear[`seats.${seatIndex}.nickname`] = null
+  viewClear[`seats.${seatIndex}.avatar`] = null
+  viewClear[`seats.${seatIndex}.chips`] = 0
+  viewClear[`seats.${seatIndex}.status`] = 'empty'
+  viewClear[`seats.${seatIndex}.pendingAction`] = null
+  await db.collection('room_views').doc(roomId).update({ data: viewClear })
+
+  return { code: 0 }
 }
 
 async function standUp(openid, event) {
