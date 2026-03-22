@@ -1,6 +1,6 @@
 // pages/profile/profile.js
 const { userAuth } = require('../../utils/cloud')
-const { formatPoints, formatPointsDelta, formatTime } = require('../../utils/format')
+const { formatPoints, formatPointsDelta, formatTime, resolveAvatars } = require('../../utils/format')
 const app = getApp()
 
 Page({
@@ -32,6 +32,11 @@ Page({
     try {
       const res = await userAuth('getProfile')
       const u = res.data
+      // 解析 cloud:// 头像
+      if (u.avatar && u.avatar.startsWith('cloud://')) {
+        const urlMap = await resolveAvatars([u.avatar])
+        u.avatar = urlMap[u.avatar] || u.avatar
+      }
       app.globalData.userInfo = u
       const winRate = u.totalGames > 0 ? Math.round(u.totalWins / u.totalGames * 100) + '%' : '0%'
       this.setData({
@@ -82,6 +87,35 @@ Page({
     const expanded = { ...this.data.expandedIds }
     expanded[id] = !expanded[id]
     this.setData({ expandedIds: expanded })
+  },
+
+  async onChooseAvatar(e) {
+    const tempPath = e.detail.avatarUrl
+    wx.showLoading({ title: '上传中...', mask: true })
+    try {
+      const openid = app.globalData.userInfo?._openid || Date.now()
+      const uploadRes = await new Promise((resolve, reject) => {
+        wx.cloud.uploadFile({
+          cloudPath: `avatars/${openid}.jpg`,
+          filePath: tempPath,
+          success: resolve,
+          fail: reject,
+        })
+      })
+      const fileID = uploadRes.fileID
+      const { userAuth } = require('../../utils/cloud')
+      // 传 fileID，云函数存 cloudAva 并刷新 avatar 为临时 URL
+      await userAuth('updateProfile', { avatar: fileID })
+      const profileRes = await userAuth('getProfile')
+      const newAvatar = profileRes.data.avatar
+      app.globalData.userInfo.avatar = newAvatar
+      this.setData({ 'userInfo.avatar': newAvatar })
+      wx.showToast({ title: '头像已更新' })
+    } catch (err) {
+      wx.showToast({ title: '上传失败', icon: 'none' })
+    } finally {
+      wx.hideLoading()
+    }
   },
 
   onEditNickname() {

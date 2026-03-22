@@ -24,6 +24,7 @@
 .seat-name { font-size: 24rpx; color: #fff; margin-bottom: 6rpx; text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 100%; }
 .seat-status { font-size: 22rpx; color: rgba(255,255,255,0.4); }
 .seat-status.ready { color: #4caf50; }
+.seat-status.host { color: #ffd700; font-weight: bold; }
 
 .empty-icon { font-size: 48rpx; color: rgba(255,255,255,0.2); margin-bottom: 8rpx; }
 .empty-text { font-size: 22rpx; color: rgba(255,255,255,0.2); }

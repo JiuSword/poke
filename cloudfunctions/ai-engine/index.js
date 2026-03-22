@@ -300,12 +300,24 @@ function applyAction(state, actorIndex, action, amount) {
 
 function runAI(state) {
   let s = state
-  // 安全计数：每个玩家最多行动 playerCount 次（应对加注后重新行动的情况）
   const playerCount = s.playerStates.filter(p => p.status !== 'folded' && p.status !== 'out').length
-  let safety = playerCount * playerCount * 3
+  let safety = playerCount * playerCount * 4
 
-  while (s.currentActorIndex !== 0 && s.currentActorIndex !== -1 && safety-- > 0) {
+  while (safety-- > 0) {
     if (isRoundOver(s) || isPhaseComplete(s) || isAllAllin(s)) break
+    if (s.currentActorIndex === -1) break
+
+    // 当前是玩家回合，检查是否还有 AI 未行动
+    if (s.currentActorIndex === 0) {
+      // 如果还有 active 的 AI 未行动，继续跳过玩家让 AI 行动
+      const unactedAI = s.playerStates.findIndex(
+        (p, i) => i !== 0 && p && p.isAI && p.status === 'active' && !p.hasActed
+      )
+      if (unactedAI === -1) break  // 所有 AI 都行动过，轮到玩家
+      // 还有 AI 未行动，跳转到该 AI
+      s = { ...s, currentActorIndex: unactedAI }
+    }
+
     const aiDecision = decideAI(s, s.currentActorIndex)
     s = applyAction(s, s.currentActorIndex, aiDecision.action, aiDecision.amount)
   }

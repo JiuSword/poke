@@ -2,7 +2,34 @@
 .container { height: 100vh; padding: 32rpx; box-sizing: border-box; }
 
 .user-section { display: flex; align-items: center; margin-bottom: 24rpx; }
-.avatar { width: 100rpx; height: 100rpx; border-radius: 50%; margin-right: 24rpx; border: 3rpx solid rgba(255,215,0,0.4); }
+
+/* 头像容器，负责右边距 */
+.avatar-container {
+  margin-right: 40rpx; flex-shrink: 0;
+  position: relative; width: 100rpx; height: 100rpx;
+}
+
+/* 头像按钮 */
+.avatar-wrap {
+  width: 100rpx !important; height: 100rpx !important;
+  min-height: 0 !important; line-height: 1 !important;
+  border-radius: 50% !important; padding: 0 !important;
+  margin: 0 !important; background: transparent;
+  border: 3rpx solid rgba(255,215,0,0.4) !important;
+  position: relative; flex-shrink: 0;
+  display: flex !important; align-items: center; justify-content: center;
+  overflow: visible !important;
+}
+.avatar-wrap::after { border: none !important; }
+.avatar { width: 100rpx; height: 100rpx; border-radius: 50%; display: block; }
+.avatar-empty { font-size: 48rpx; }
+.avatar-edit-badge {
+  position: absolute; bottom: -4rpx; right: -4rpx;
+  width: 32rpx; height: 32rpx; border-radius: 50%;
+  background: #1a1a2e; font-size: 18rpx;
+  display: flex; align-items: center; justify-content: center;
+  border: 1rpx solid rgba(255,215,0,0.3);
+}
 .user-info { flex: 1; }
 .nickname-row { display: flex; align-items: center; gap: 16rpx; margin-bottom: 8rpx; }
 .nickname { font-size: 36rpx; font-weight: bold; color: #fff; }

@@ -1,7 +1,7 @@
 // pages/game/game.js
 const { gameAction } = require('../../utils/cloud')
 const watchManager = require('../../utils/db-watch')
-const { formatCard, formatCountdown } = require('../../utils/format')
+const { formatCard, formatCountdown, resolveAvatars } = require('../../utils/format')
 const app = getApp()
 
 // 前端简化版牌型评估（用于实时展示）
@@ -199,9 +199,17 @@ Page({
     this.watchKeys = [k1, k2]
   },
 
-  onRoomViewChange(roomView) {
+  async onRoomViewChange(roomView) {
     const { myOpenid } = this.data
-    const seats = roomView.seats || []
+    let seats = roomView.seats || []
+
+    // 解析 cloud:// 头像为可展示的 HTTPS URL
+    const cloudAvatars = seats.map(s => s.avatar).filter(a => a && a.startsWith('cloud://'))
+    if (cloudAvatars.length > 0) {
+      const urlMap = await resolveAvatars(cloudAvatars)
+      seats = seats.map(s => ({ ...s, avatar: urlMap[s.avatar] || s.avatar }))
+    }
+
     const mySeat = seats.find(s => s.openid === myOpenid)
     const mySeatIndex = mySeat ? mySeat.seatIndex : -1
     const isMyTurn = mySeat ? mySeat.isCurrentActor : false
@@ -324,7 +332,14 @@ Page({
     // 本手结算：短暂展示赢家，3秒后 settlement 云函数自动开下一手
     if (roomView.phase === 'hand_settled') {
       this.clearCountdown()
-      this.setData({ showHandResult: true, handWinners: roomView.winners || [] })
+      const winners = roomView.winners || []
+      // 弃牌获胜时：赢家是自己 = 对手弃牌，需要播放音效
+      //             赢家不是自己 = 自己弃牌，doAction 里已播过，不重复播
+      const isFoldWin = winners.length > 0 && winners[0].handRank === '其他人弃牌'
+      if (isFoldWin && winners[0].openid === this.data.myOpenid) {
+        this._playFold()
+      }
+      this.setData({ showHandResult: true, handWinners: winners })
       return
     }
 
@@ -575,26 +590,22 @@ Page({
 
     wx.showModal({
       title: '退出房间',
-      content: isSpectator ? '确定退出观战吗？' : (inGame ? '确定后将自动弃牌并起立，以观战者身份留在房间' : '确定退出房间吗？'),
+      content: isSpectator ? '确定退出观战吗？' : (inGame ? '退出后本手自动弃牌，本手结束后自动起立，确定退出吗？' : '确定退出房间吗？'),
       success: async res => {
         if (!res.confirm) return
         const { roomManage } = require('../../utils/cloud')
         if (inGame) {
-          if (!this.data.isMyTurn) {
-            wx.showToast({ title: '请等待你的回合再操作', icon: 'none' })
-            return
-          }
-          // 游戏中：先弃牌，再起立变为观战者，留在页面
+          // 服务端统一处理：弃牌（如轮到自己）+ 标记起立
           try {
-            await this.doAction('fold', 0)
+            await roomManage('leaveInGame', { roomId: this.data.roomId })
           } catch (e) {}
-          try {
-            await roomManage('standUp', { roomId: this.data.roomId })
-          } catch (e) {}
-          // 不跳页面，watch 会感知座位变化，自动切换为观战状态
+          // 前端直接跳回首页
+          this.watchKeys.forEach(k => watchManager.unwatch(k))
+          this.clearCountdown()
+          wx.reLaunch({ url: '/pages/home/home' })
           return
         }
-        // 等待中或观战者：直接离开
+        // 观战者或等待中：直接离开
         try {
           await roomManage('leaveRoom', { roomId: this.data.roomId })
         } catch (e) {}
@@ -655,7 +666,7 @@ Page({
     if (!this._betAudio) {
       this._betAudio = wx.createInnerAudioContext()
       this._betAudio.src = '/audios/bet.mp3'
-      this._betAudio.volume = 0.8
+      this._betAudio.volume = 0.9
     }
     this._betAudio.stop()
     this._betAudio.play()

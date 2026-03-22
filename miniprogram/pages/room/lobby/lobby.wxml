@@ -1,5 +1,5 @@
 <!-- pages/room/lobby/lobby.wxml -->
-<view class="container">
+<view class="container" style="padding-top:{{statusBarHeight}}px">
   <!-- 房间号 -->
   <view class="room-code-card card">
     <text class="room-label">房间号</text>
@@ -13,8 +13,8 @@
       <block wx:if="{{item.openid}}">
         <image class="seat-avatar" src="{{item.avatar}}" mode="aspectFill" />
         <text class="seat-name">{{item.nickname}}</text>
-        <text class="seat-status {{item.status === 'ready' ? 'ready' : ''}}">
-          {{item.status === 'ready' ? '已准备' : '未准备'}}
+        <text class="seat-status {{item.status === 'ready' ? 'ready' : (item.openid === hostOpenid ? 'host' : '')}}">
+          {{item.openid === hostOpenid ? '房主' : (item.status === 'ready' ? '已准备' : '未准备')}}
         </text>
       </block>
       <block wx:else>

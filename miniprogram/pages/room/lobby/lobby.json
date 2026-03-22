@@ -1,1 +1,5 @@
-{ "navigationBarTitleText": "等待大厅", "usingComponents": {} }
+{
+  "navigationBarTitleText": "等待大厅",
+  "navigationStyle": "custom",
+  "usingComponents": {}
+}

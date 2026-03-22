@@ -1,6 +1,7 @@
 // pages/room/lobby/lobby.js
 const { roomManage } = require('../../../utils/cloud')
 const watchManager = require('../../../utils/db-watch')
+const { resolveAvatars } = require('../../../utils/format')
 const app = getApp()
 
 Page({
@@ -13,6 +14,8 @@ Page({
     loading: false,
     isReady: false,
     myOpenid: '',
+    hostOpenid: '',
+    statusBarHeight: 20,
   },
 
   watchKey: null,
@@ -25,9 +28,14 @@ Page({
       roomCode: options.roomCode,
       isHost: options.isHost === '1',
       myOpenid,
+      statusBarHeight: app.globalData.statusBarHeight || 20,
     })
     this.startWatch()
     this.startHeartbeat(options.roomId)
+    // 获取房主 openid
+    roomManage('getRoomInfo', { roomId: options.roomId }).then(res => {
+      if (res.data?.hostOpenid) this.setData({ hostOpenid: res.data.hostOpenid })
+    }).catch(() => {})
   },
 
   onUnload() {
@@ -80,8 +88,19 @@ Page({
           setTimeout(() => wx.navigateBack(), 1500)
           return
         }
-        const seats = roomView.seats || []
-        // 从 seats 里读取自己的 ready 状态
+        let seats = roomView.seats || []
+        // 解析 cloud:// 头像
+        const cloudAvatars = seats.map(s => s.avatar).filter(a => a && a.startsWith('cloud://'))
+        if (cloudAvatars.length > 0) {
+          resolveAvatars(cloudAvatars).then(urlMap => {
+            seats = seats.map(s => ({ ...s, avatar: urlMap[s.avatar] || s.avatar }))
+            const { myOpenid } = this.data
+            const mySeat = seats.find(s => s.openid === myOpenid)
+            const isReady = mySeat ? mySeat.status === 'ready' : false
+            this.setData({ seats, phase: roomView.phase, isReady })
+          })
+          return
+        }
         const { myOpenid } = this.data
         const mySeat = seats.find(s => s.openid === myOpenid)
         const isReady = mySeat ? mySeat.status === 'ready' : false
@@ -93,6 +112,11 @@ Page({
 
   async onReady() {
     this.setData({ loading: false })
+  },
+
+  // 拦截 Android 物理返回键，不允许直接返回
+  onBackPress() {
+    return true  // 返回 true 阻止默认返回行为
   },
 
   async onSetReady() {

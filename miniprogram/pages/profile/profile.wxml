@@ -26,7 +26,13 @@
 <scroll-view scroll-y class="container" bindscrolltolower="onLoadMore">
   <!-- 用户信息 -->
   <view class="user-section card">
-    <image class="avatar" src="{{userInfo.avatar}}" mode="aspectFill" />
+    <view class="avatar-container">
+      <button class="avatar-wrap" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+        <image wx:if="{{userInfo.avatar}}" class="avatar" src="{{userInfo.avatar}}" mode="aspectFill" />
+        <view wx:else class="avatar-empty">📷</view>
+        <view class="avatar-edit-badge">✏️</view>
+      </button>
+    </view>
     <view class="user-info">
       <view class="nickname-row">
         <text class="nickname">{{userInfo.nickname}}</text>

@@ -74,12 +74,27 @@ Page({
     }
     this.setData({ loading: true })
     try {
-      await userAuth('updateProfile', { nickname: nickname.trim(), avatar })
-      app.globalData.userInfo.nickname = nickname.trim()
-      app.globalData.userInfo.avatar = avatar
+      // 将临时头像上传到云存储，获取永久 URL
+      const openid = app.globalData.userInfo?._openid || Date.now()
+      const cloudPath = `avatars/${openid}.jpg`
+      const uploadRes = await new Promise((resolve, reject) => {
+        wx.cloud.uploadFile({
+          cloudPath,
+          filePath: avatar,
+          success: resolve,
+          fail: reject,
+        })
+      })
+      const fileID = uploadRes.fileID
+      // 传 fileID 给云函数，云函数会存 cloudAva 并刷新 avatar 为临时 URL
+      await userAuth('updateProfile', { nickname: nickname.trim(), avatar: fileID })
+      // 重新获取最新用户信息（含刷新后的临时 URL）
+      const profileRes = await userAuth('getProfile')
+      app.globalData.userInfo = { ...app.globalData.userInfo, ...profileRes.data }
       wx.reLaunch({ url: '/pages/home/home' })
     } catch (e) {
-      wx.showToast({ title: '保存失败', icon: 'none' })
+      console.error('保存失败', e)
+      wx.showToast({ title: '保存失败，请重试', icon: 'none' })
     } finally {
       this.setData({ loading: false })
     }

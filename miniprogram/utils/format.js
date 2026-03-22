@@ -38,4 +38,35 @@ function formatCountdown(deadlineMs) {
   return remaining
 }
 
-module.exports = { formatCard, formatPoints, formatPointsDelta, formatTime, formatCountdown }
+// 头像 URL 缓存（fileID -> 临时 URL）
+const _avatarCache = {}
+
+/**
+ * 批量解析头像 URL，将 cloud:// fileID 转为可展示的临时 URL
+ * @param {string[]} fileIDs
+ * @returns {Promise<Object>} { fileID: tempURL }
+ */
+async function resolveAvatars(fileIDs) {
+  const toFetch = fileIDs.filter(id => id && id.startsWith('cloud://') && !_avatarCache[id])
+  if (toFetch.length > 0) {
+    try {
+      const res = await new Promise((resolve, reject) => {
+        wx.cloud.getTempFileURL({
+          fileList: toFetch,
+          success: resolve,
+          fail: reject,
+        })
+      })
+      for (const item of res.fileList) {
+        if (item.tempFileURL) _avatarCache[item.fileID] = item.tempFileURL
+      }
+    } catch (e) {}
+  }
+  const result = {}
+  for (const id of fileIDs) {
+    result[id] = _avatarCache[id] || id
+  }
+  return result
+}
+
+module.exports = { formatCard, formatPoints, formatPointsDelta, formatTime, formatCountdown, resolveAvatars }

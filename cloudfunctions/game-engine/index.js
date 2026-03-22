@@ -333,20 +333,31 @@ async function endRound(event) {
   }
 
   // 生成 winners（带昵称）
+  const isFoldWin = activePlayers.length === 1  // 其他人弃牌获胜，不展示牌型
   const winners = Object.entries(winnings).map(([openid, potShare]) => {
     const seat = room.seats.find(s => s.openid === openid)
-    const handResults = {}
-    const p = round.playerStates.find(ps => ps && ps.openid === openid)
-    if (p && communityCards.length > 0) {
-      const allCards = [...p.holeCards, ...communityCards]
-      if (allCards.length >= 5) handResults[openid] = evaluateBestHand(allCards)
+    let handRank = ''
+    let bestCards = []
+    if (isFoldWin) {
+      handRank = '其他人弃牌'
+    } else {
+      const p = round.playerStates.find(ps => ps && ps.openid === openid)
+      if (p && communityCards.length > 0) {
+        const allCards = [...p.holeCards, ...communityCards]
+        if (allCards.length >= 5) {
+          const result = evaluateBestHand(allCards)
+          handRank = result?.name || ''
+          bestCards = result?.cards || []
+        }
+      }
     }
     return {
       openid,
       nickname: seat?.nickname || openid,
+      avatar: seat?.avatar || '',
       potShare,
-      handRank: handResults[openid]?.name || (activePlayers.length === 1 ? '其他人弃牌' : ''),
-      bestCards: handResults[openid]?.cards || [],
+      handRank,
+      bestCards,
     }
   })
 

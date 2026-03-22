@@ -36,7 +36,7 @@ async function settle(event) {
     const finalChips = seat.chips || 0
     const initialChips = seat.initialChips || buyInChips
     const chipsDelta = finalChips - initialChips
-    return { openid: seat.openid, nickname: seat.nickname, finalChips, initialChips, chipsDelta }
+    return { openid: seat.openid, nickname: seat.nickname, avatar: seat.avatar || '', finalChips, initialChips, chipsDelta }
   })
 
   // 零和修正：若总 chipsDelta 不为 0，把误差加到赢最多的人身上

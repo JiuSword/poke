@@ -1,5 +1,6 @@
 // pages/room/join/join.js
 const { roomManage } = require('../../../utils/cloud')
+const { resolveAvatars } = require('../../../utils/format')
 
 Page({
   data: { roomCode: '', loading: false, publicRooms: [], roomsLoading: false },
@@ -43,6 +44,17 @@ Page({
         filledCount: r.seats.filter(s => s.openid).length,
       }))
       this.setData({ publicRooms: rooms })
+      // 解析 cloud:// 头像（旧数据兼容）
+      const allAvatars = rooms.flatMap(r => (r.seats || []).map(s => s.avatar)).filter(a => a && a.startsWith('cloud://'))
+      if (allAvatars.length > 0) {
+        resolveAvatars(allAvatars).then(urlMap => {
+          const resolved = rooms.map(r => ({
+            ...r,
+            seats: (r.seats || []).map(s => ({ ...s, avatar: urlMap[s.avatar] || s.avatar })),
+          }))
+          this.setData({ publicRooms: resolved })
+        })
+      }
     } catch (e) {
       console.error('loadPublicRooms error', e)
     } finally {

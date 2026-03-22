@@ -21,6 +21,7 @@ exports.main = async (event, context) => {
     case 'resumeGame': return resumeGame(OPENID, event)
     case 'sitDown': return sitDown(OPENID, event)
     case 'standUp': return standUp(OPENID, event)
+    case 'leaveInGame': return leaveInGame(OPENID, event)
     case 'cancelStandUp': return cancelStandUp(OPENID, event)
     case 'heartbeat': return heartbeat(OPENID, event)
     case 'cleanRooms': return cleanEmptyRooms().then(() => ({ code: 0 }))
@@ -545,6 +546,49 @@ async function sitDown(openid, event) {
   await db.collection('room_views').doc(roomId).update({ data: viewUpdate })
 
   return { code: 0 }
+}
+
+// 游戏中主动退出：服务端直接弃牌（如果轮到该玩家）+ 标记起立
+async function leaveInGame(openid, event) {
+  const { roomId } = event
+
+  const roomRes = await db.collection('rooms').doc(roomId).get()
+  const room = roomRes.data
+  if (!room) return { code: 404, msg: '房间不存在' }
+
+  const seatIndex = room.seats.findIndex(s => s.openid === openid)
+  if (seatIndex === -1) return { code: 400, msg: '未在房间' }
+
+  // 如果游戏进行中，尝试在服务端执行弃牌
+  if (room.status === 'playing' && room.currentGameRoundId) {
+    try {
+      const roundRes = await db.collection('game_rounds').doc(room.currentGameRoundId).get()
+      const round = roundRes.data
+      if (round && round.phase !== 'ended') {
+        const ps = round.playerStates[seatIndex]
+        // 只有轮到该玩家且状态为 active 时才弃牌
+        if (ps && ps.status === 'active' && round.currentActorSeatIndex === seatIndex) {
+          await cloud.callFunction({
+            name: 'game-action',
+            data: {
+              action: 'playerAction',
+              playerAction: 'fold',
+              roomId,
+              gameRoundId: room.currentGameRoundId,
+              amount: 0,
+              _systemCall: true,
+              _openid: openid,
+            },
+          })
+        }
+      }
+    } catch (e) {
+      console.error('leaveInGame fold error', e)
+    }
+  }
+
+  // 标记起立，本手结束后自动清空座位
+  return standUp(openid, event)
 }
 
 async function standUp(openid, event) {

@@ -19,10 +19,10 @@ Page({
       const settlements = raw.map(s => ({
         ...s,
         isMe: s.openid === myOpenid,
+        // 自己用 globalData 里的头像（已刷新临时 URL），对手用结算数据里的头像
+        avatar: s.openid === myOpenid ? (app.globalData.userInfo?.avatar || s.avatar || '') : (s.avatar || ''),
         pointsDeltaDisplay: (s.pointsDelta >= 0 ? '+' : '') + s.pointsDelta,
         chipsDeltaDisplay: (s.chipsDelta >= 0 ? '+' : '') + s.chipsDelta,
-        // 补充筹码消耗 = initialChips - buyInChips（如果有多次补充）
-        refillCost: s.initialChips > s.chipsStart ? Math.round((s.initialChips - s.chipsStart) * 0) : 0,
       }))
       .sort((a, b) => b.pointsDelta - a.pointsDelta)
 

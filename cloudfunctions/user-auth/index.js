@@ -26,13 +26,34 @@ exports.main = async (event, context) => {
   }
 }
 
+// 将 cloud:// fileID 转为临时 URL
+async function getTempURL(fileID) {
+  if (!fileID || !fileID.startsWith('cloud://')) return fileID
+  try {
+    const res = await cloud.getTempFileURL({ fileList: [fileID], maxAge: 86400, })
+    return res.fileList[0]?.tempFileURL || fileID
+  } catch (e) {
+    return fileID
+  }
+}
+
 async function login(openid, event) {
   try {
     const res = await db.collection('users').where({ _openid: openid }).get()
 
     if (res.data.length > 0) {
-      // 已有账号，返回用户信息
-      return { code: 0, data: res.data[0], isNew: false }
+      const user = res.data[0]
+      // 如果有 cloudAva（永久 fileID），刷新 avatar 为临时 URL 并更新数据库
+      if (user.cloudAva) {
+        const tempURL = await getTempURL(user.cloudAva)
+        if (tempURL && tempURL !== user.cloudAva) {
+          await db.collection('users').where({ _openid: openid }).update({
+            data: { avatar: tempURL, updatedAt: db.serverDate() },
+          })
+          user.avatar = tempURL
+        }
+      }
+      return { code: 0, data: user, isNew: false }
     }
 
     // 首次登录，创建账号
@@ -41,6 +62,7 @@ async function login(openid, event) {
       _openid: openid,
       nickname: event.nickname || '玩家' + Math.floor(Math.random() * 9999),
       avatar: event.avatar || '',
+      cloudAva: '',
       points: INITIAL_POINTS,
       totalGames: 0,
       totalWins: 0,
@@ -60,7 +82,20 @@ async function updateProfile(openid, event) {
   try {
     const update = { updatedAt: db.serverDate() }
     if (event.nickname) update.nickname = event.nickname
-    if (event.avatar) update.avatar = event.avatar
+
+    // avatar 字段：如果传入的是 cloud:// fileID，存到 cloudAva，并刷新 avatar 为临时 URL
+    // 如果传入的是普通 URL，直接存 avatar
+    if (event.avatar) {
+      if (event.avatar.startsWith('cloud://')) {
+        update.cloudAva = event.avatar
+        const tempURL = await getTempURL(event.avatar)
+        update.avatar = tempURL
+      } else {
+        update.avatar = event.avatar
+        // 清除旧的 cloudAva（如果有）
+        update.cloudAva = ''
+      }
+    }
 
     await db.collection('users').where({ _openid: openid }).update({ data: update })
     return { code: 0 }
