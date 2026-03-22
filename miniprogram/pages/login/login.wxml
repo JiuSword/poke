@@ -6,10 +6,41 @@
     <text class="logo-sub">好友联机 · 娱乐对局</text>
   </view>
 
-  <view class="login-area">
+  <!-- 步骤1：未登录，显示登录按钮 -->
+  <view wx:if="{{step === 'login'}}" class="login-area">
     <button class="btn-primary login-btn" bindtap="onLogin" loading="{{loading}}" disabled="{{loading}}">
       微信一键登录
     </button>
     <text class="tip-text">纯娱乐，不涉及真实货币</text>
+  </view>
+
+  <!-- 步骤2：已登录，设置头像和昵称 -->
+  <view wx:elif="{{step === 'profile'}}" class="profile-area">
+    <text class="profile-title">设置你的游戏信息</text>
+
+    <!-- 头像选择 -->
+    <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+      <image wx:if="{{avatar}}" class="avatar-preview" src="{{avatar}}" mode="aspectFill" />
+      <view wx:else class="avatar-placeholder">
+        <text style="font-size:60rpx;">📷</text>
+      </view>
+    </button>
+
+    <!-- 昵称输入 -->
+    <view class="nickname-wrap">
+      <input
+        class="nickname-input"
+        type="nickname"
+        placeholder="点击输入昵称"
+        placeholder-class="nickname-placeholder"
+        value="{{nickname}}"
+        bindinput="onNicknameInput"
+        maxlength="12"
+      />
+    </view>
+
+    <button class="btn-primary confirm-btn" bindtap="onConfirmProfile" loading="{{loading}}" disabled="{{loading}}">
+      进入游戏
+    </button>
   </view>
 </view>

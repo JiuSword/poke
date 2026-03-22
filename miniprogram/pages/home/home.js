@@ -29,6 +29,12 @@ Page({
   },
 
   onShow() {
+    // 兜底：没有头像则跳回设置页（防止用户绕过设置）
+    const userInfo = app.globalData.userInfo
+    if (userInfo && !userInfo.avatar) {
+      wx.reLaunch({ url: '/pages/login/login?step=profile' })
+      return
+    }
     // 从其他页面返回时刷新积分
     if (app.globalData.userInfo) {
       this.refreshProfile()

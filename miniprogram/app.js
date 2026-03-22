@@ -52,7 +52,17 @@ App({
 
       if (res.code === 0) {
         this.globalData.userInfo = res.data
-        // 通知首页登录成功（如果首页已经在等待）
+        // 没有头像或是新用户：跳转设置资料
+        if (res.data.isNew || !res.data.avatar) {
+          // 只在首页等待时才跳转，避免重复跳转
+          const pages = getCurrentPages()
+          const current = pages[pages.length - 1]
+          if (current && current.route === 'pages/home/home') {
+            wx.reLaunch({ url: '/pages/login/login?step=profile' })
+            return
+          }
+        }
+        // 老用户：通知首页登录成功
         if (this.loginReadyCallback) {
           this.loginReadyCallback(res.data)
           this.loginReadyCallback = null

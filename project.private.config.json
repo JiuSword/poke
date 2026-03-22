@@ -3,11 +3,25 @@
     "miniprogram": {
       "list": [
         {
-          "name": "pages/room/join/join",
-          "pathName": "pages/room/join/join",
+          "name": "pages/home/home",
+          "pathName": "pages/home/home",
           "query": "",
           "scene": null,
           "launchMode": "default"
+        },
+        {
+          "name": "pages/login/login",
+          "pathName": "pages/login/login",
+          "query": "",
+          "launchMode": "default",
+          "scene": null
+        },
+        {
+          "name": "pages/room/join/join",
+          "pathName": "pages/room/join/join",
+          "query": "",
+          "launchMode": "default",
+          "scene": null
         },
         {
           "name": "pages/ai-practice/ai-practice",
