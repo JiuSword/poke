@@ -91,6 +91,7 @@ Page({
     // 本手结算
     showHandResult: false,
     handWinners: [],
+    handResultCountdown: 5,
     // 是否房主
     isHost: false,
     // 安全区
@@ -111,11 +112,14 @@ Page({
     isPaused: false,
     // 公共牌翻开动画：上一次已显示的牌数
     prevCardCount: 0,
+    // 牌型说明浮窗
+    showHandGuide: false,
   },
 
   watchKeys: [],
   countdownInterval: null,
   heartbeatInterval: null,
+  handResultTimer: null,
 
   onLoad(options) {
     const myOpenid = app.globalData.userInfo?._openid || ''
@@ -346,13 +350,23 @@ Page({
       if (isFoldWin && winners[0].openid === this.data.myOpenid) {
         this._playFold()
       }
-      this.setData({ showHandResult: true, handWinners: winners })
+      this.setData({ showHandResult: true, handWinners: winners, handResultCountdown: 5 })
+      if (this.handResultTimer) clearInterval(this.handResultTimer)
+      this.handResultTimer = setInterval(() => {
+        const next = this.data.handResultCountdown - 1
+        this.setData({ handResultCountdown: next })
+        if (next <= 0) {
+          clearInterval(this.handResultTimer)
+          this.handResultTimer = null
+        }
+      }, 1000)
       return
     }
 
     // 新手开始：隐藏上手结果，更新 gameRoundId
     if (roomView.gameRoundId && roomView.gameRoundId !== this.data.gameRoundId) {
-      this.setData({ showHandResult: false, handWinners: [], gameRoundId: roomView.gameRoundId })
+      if (this.handResultTimer) { clearInterval(this.handResultTimer); this.handResultTimer = null }
+      this.setData({ showHandResult: false, handWinners: [], handResultCountdown: 5, gameRoundId: roomView.gameRoundId })
       // 重新订阅新手的手牌
       if (this.watchKeys[1]) watchManager.unwatch(this.watchKeys[1])
       const k2 = watchManager.watchMyCards(roomView.gameRoundId, cards => {
@@ -420,6 +434,11 @@ Page({
       clearInterval(this.countdownInterval)
       this.countdownInterval = null
     }
+  },
+
+  // 牌型说明浮窗
+  onToggleHandGuide() {
+    this.setData({ showHandGuide: !this.data.showHandGuide })
   },
 
   // 暂停/继续（服务端驱动，所有玩家同步感知）

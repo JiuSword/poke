@@ -1,5 +1,5 @@
 /* pages/room/lobby/lobby.wxss */
-.container { padding: 32rpx; }
+.container { padding: 32rpx; margin-top: 64rpx;}
 
 .room-code-card { text-align: center; margin-bottom: 32rpx; }
 .room-label { font-size: 26rpx; color: rgba(255,255,255,0.5); display: block; margin-bottom: 8rpx; }

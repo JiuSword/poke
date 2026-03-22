@@ -3,11 +3,18 @@
     "miniprogram": {
       "list": [
         {
-          "name": "pages/home/home",
-          "pathName": "pages/home/home",
+          "name": "pages/room/lobby/lobby",
+          "pathName": "pages/room/lobby/lobby",
           "query": "",
           "scene": null,
           "launchMode": "default"
+        },
+        {
+          "name": "pages/home/home",
+          "pathName": "pages/home/home",
+          "query": "",
+          "launchMode": "default",
+          "scene": null
         },
         {
           "name": "pages/login/login",

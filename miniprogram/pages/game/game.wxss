@@ -373,6 +373,61 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 .settling-text { font-size: 32rpx; color: rgba(255,255,255,0.7); letter-spacing: 4rpx; }
 
+/* ── 牌型说明浮窗 */
+.hand-guide-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 300;
+}
+.hand-guide-card {
+  background: #1a2235; border-radius: 24rpx;
+  width: 680rpx; max-height: 88vh;
+  border: 1rpx solid rgba(255,215,0,0.2);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.hand-guide-title {
+  font-size: 34rpx; font-weight: bold; color: #ffd700;
+  text-align: center; padding: 28rpx 0 20rpx;
+  border-bottom: 1rpx solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+.hand-guide-list {
+  overflow-y: auto; padding: 8rpx 24rpx;
+  flex: 1;
+}
+.hg-item {
+  display: flex; align-items: center; gap: 14rpx;
+  padding: 14rpx 0;
+  border-bottom: 1rpx solid rgba(255,255,255,0.06);
+}
+.hg-item:last-child { border-bottom: none; }
+.hg-rank {
+  font-size: 22rpx; color: rgba(255,215,0,0.6); font-weight: bold;
+  width: 36rpx; text-align: center; flex-shrink: 0;
+}
+.hg-info {
+  display: flex; flex-direction: column; gap: 4rpx;
+  flex: 1; min-width: 0;
+}
+.hg-name { font-size: 26rpx; font-weight: bold; color: #fff; }
+.hg-desc { font-size: 19rpx; color: rgba(255,255,255,0.4); }
+.hg-cards {
+  display: flex; gap: 4rpx; flex-shrink: 0;
+}
+.hg-card {
+  font-size: 26rpx; font-weight: bold;
+  background: #fff; border-radius: 8rpx;
+  padding: 6rpx 8rpx; line-height: 1;
+}
+.hg-card.red { color: #e53935; }
+.hg-card.black { color: #1a1a1a; }
+.hand-guide-close {
+  font-size: 20rpx; color: rgba(255,255,255,0.3);
+  text-align: center; padding: 16rpx 0 20rpx;
+  flex-shrink: 0;
+}
+
 .hand-result-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.8);
   display: flex; align-items: center; justify-content: center; z-index: 200;

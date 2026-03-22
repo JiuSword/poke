@@ -15,7 +15,7 @@
         <text wx:if="{{item.handRank}}" class="hr-rank">{{item.handRank}}</text>
         <text wx:if="{{item.chipsAfter !== undefined}}" class="hr-after">持有: {{item.chipsAfter}}</text>
       </view>
-      <text class="hr-tip">5秒后开始下一手...</text>
+      <text class="hr-tip">{{handResultCountdown}}秒后开始下一手...</text>
     </view>
   </view>
 
@@ -55,6 +55,9 @@
             <image class="icon-img" src="/images/ui/关机.png" mode="aspectFit" />
           </view>
         </block>
+        <view class="icon-btn help-btn" bindtap="onToggleHandGuide">
+          <image class="icon-img" src="/images/ui/问号.png" mode="aspectFit" />
+        </view>
       </view>
     </view>
   </view>
@@ -236,6 +239,116 @@
 
     </view>
 
+  </view>
+
+  <!-- 牌型说明浮窗 -->
+  <view class="hand-guide-overlay" wx:if="{{showHandGuide}}" bindtap="onToggleHandGuide">
+    <view class="hand-guide-card" catchtap="noop">
+      <text class="hand-guide-title">德扑牌型大小</text>
+      <view class="hand-guide-list">
+        <view class="hg-item">
+          <text class="hg-rank">1</text>
+          <view class="hg-info">
+            <text class="hg-name">皇家同花顺</text>
+            <text class="hg-desc">A K Q J 10 同花色</text>
+          </view>
+          <view class="hg-cards">
+            <text class="hg-card red">A♥</text><text class="hg-card red">K♥</text><text class="hg-card red">Q♥</text><text class="hg-card red">J♥</text><text class="hg-card red">10♥</text>
+          </view>
+        </view>
+        <view class="hg-item">
+          <text class="hg-rank">2</text>
+          <view class="hg-info">
+            <text class="hg-name">同花顺</text>
+            <text class="hg-desc">五张连续同花色</text>
+          </view>
+          <view class="hg-cards">
+            <text class="hg-card black">9♠</text><text class="hg-card black">8♠</text><text class="hg-card black">7♠</text><text class="hg-card black">6♠</text><text class="hg-card black">5♠</text>
+          </view>
+        </view>
+        <view class="hg-item">
+          <text class="hg-rank">3</text>
+          <view class="hg-info">
+            <text class="hg-name">四条</text>
+            <text class="hg-desc">四张相同点数</text>
+          </view>
+          <view class="hg-cards">
+            <text class="hg-card black">K♠</text><text class="hg-card red">K♥</text><text class="hg-card red">K♦</text><text class="hg-card black">K♣</text><text class="hg-card black">3♠</text>
+          </view>
+        </view>
+        <view class="hg-item">
+          <text class="hg-rank">4</text>
+          <view class="hg-info">
+            <text class="hg-name">葫芦</text>
+            <text class="hg-desc">三条 + 一对</text>
+          </view>
+          <view class="hg-cards">
+            <text class="hg-card black">Q♠</text><text class="hg-card red">Q♥</text><text class="hg-card red">Q♦</text><text class="hg-card black">J♣</text><text class="hg-card red">J♥</text>
+          </view>
+        </view>
+        <view class="hg-item">
+          <text class="hg-rank">5</text>
+          <view class="hg-info">
+            <text class="hg-name">同花</text>
+            <text class="hg-desc">五张同花色</text>
+          </view>
+          <view class="hg-cards">
+            <text class="hg-card red">A♦</text><text class="hg-card red">J♦</text><text class="hg-card red">8♦</text><text class="hg-card red">5♦</text><text class="hg-card red">2♦</text>
+          </view>
+        </view>
+        <view class="hg-item">
+          <text class="hg-rank">6</text>
+          <view class="hg-info">
+            <text class="hg-name">顺子</text>
+            <text class="hg-desc">五张连续点数</text>
+          </view>
+          <view class="hg-cards">
+            <text class="hg-card black">9♠</text><text class="hg-card red">8♥</text><text class="hg-card black">7♣</text><text class="hg-card red">6♦</text><text class="hg-card black">5♠</text>
+          </view>
+        </view>
+        <view class="hg-item">
+          <text class="hg-rank">7</text>
+          <view class="hg-info">
+            <text class="hg-name">三条</text>
+            <text class="hg-desc">三张相同点数</text>
+          </view>
+          <view class="hg-cards">
+            <text class="hg-card black">7♠</text><text class="hg-card red">7♥</text><text class="hg-card black">7♣</text><text class="hg-card black">K♠</text><text class="hg-card red">2♦</text>
+          </view>
+        </view>
+        <view class="hg-item">
+          <text class="hg-rank">8</text>
+          <view class="hg-info">
+            <text class="hg-name">两对</text>
+            <text class="hg-desc">两组各两张相同</text>
+          </view>
+          <view class="hg-cards">
+            <text class="hg-card black">J♠</text><text class="hg-card red">J♥</text><text class="hg-card black">4♣</text><text class="hg-card red">4♦</text><text class="hg-card black">A♠</text>
+          </view>
+        </view>
+        <view class="hg-item">
+          <text class="hg-rank">9</text>
+          <view class="hg-info">
+            <text class="hg-name">一对</text>
+            <text class="hg-desc">两张相同点数</text>
+          </view>
+          <view class="hg-cards">
+            <text class="hg-card black">A♠</text><text class="hg-card red">A♥</text><text class="hg-card black">8♣</text><text class="hg-card red">5♦</text><text class="hg-card black">2♠</text>
+          </view>
+        </view>
+        <view class="hg-item">
+          <text class="hg-rank">10</text>
+          <view class="hg-info">
+            <text class="hg-name">高牌</text>
+            <text class="hg-desc">无以上组合</text>
+          </view>
+          <view class="hg-cards">
+            <text class="hg-card black">A♠</text><text class="hg-card red">J♥</text><text class="hg-card black">9♣</text><text class="hg-card red">6♦</text><text class="hg-card black">2♠</text>
+          </view>
+        </view>
+      </view>
+      <text class="hand-guide-close">点击空白处关闭</text>
+    </view>
   </view>
 
 </view>
