@@ -350,7 +350,12 @@ Page({
       if (isFoldWin && winners[0].openid === this.data.myOpenid) {
         this._playFold()
       }
-      this.setData({ showHandResult: true, handWinners: winners, handResultCountdown: 5 })
+      const handWinners = winners.map(w => ({
+        ...w,
+        holeCardsParsed: (w.holeCards || []).map(c => formatCard(c)),
+      }))
+      console.log('[hand_settled] handWinners:', JSON.stringify(handWinners))
+      this.setData({ showHandResult: true, handWinners, handResultCountdown: 5 })
       if (this.handResultTimer) clearInterval(this.handResultTimer)
       this.handResultTimer = setInterval(() => {
         const next = this.data.handResultCountdown - 1

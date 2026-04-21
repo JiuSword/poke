@@ -351,6 +351,11 @@ async function endRound(event) {
         }
       }
     }
+    let holeCards = []
+    if (!isFoldWin) {
+      const p = round.playerStates.find(ps => ps && ps.openid === openid)
+      holeCards = p?.holeCards || []
+    }
     return {
       openid,
       nickname: seat?.nickname || openid,
@@ -358,6 +363,7 @@ async function endRound(event) {
       potShare,
       handRank,
       bestCards,
+      holeCards,
     }
   })
 

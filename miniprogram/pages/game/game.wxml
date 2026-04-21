@@ -13,6 +13,13 @@
         <text class="hr-name">🏆 {{item.nickname || item.openid}}</text>
         <text class="hr-chips">+{{item.potShare}} 筹码</text>
         <text wx:if="{{item.handRank}}" class="hr-rank">{{item.handRank}}</text>
+        <view wx:if="{{item.holeCardsParsed && item.holeCardsParsed.length > 0}}" class="hr-hole-cards">
+          <view wx:for="{{item.holeCardsParsed}}" wx:for-item="card" wx:for-index="ci" wx:key="ci"
+            class="hr-card" style="color:{{card.color}}">
+            <text class="hr-card-rank">{{card.rank}}</text>
+            <text class="hr-card-suit">{{card.symbol}}</text>
+          </view>
+        </view>
         <text wx:if="{{item.chipsAfter !== undefined}}" class="hr-after">持有: {{item.chipsAfter}}</text>
       </view>
       <text class="hr-tip">{{handResultCountdown}}秒后开始下一手...</text>
