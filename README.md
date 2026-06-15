@@ -34,6 +34,11 @@ cd ../timer-scheduler && npm install
 - `point_records`
 - `ai_sessions`
 
+双人桌游《女王万岁》额外需要：
+- `queen_rooms`
+- `queen_states`
+- `queen_private`
+
 ### 5. 配置数据库权限规则
 
 参考 `database-rules.md`
@@ -59,14 +64,31 @@ poker-miniprogram/
 │   ├── settlement/       # 积分结算
 │   ├── ai-engine/        # AI练习
 │   ├── timer-scheduler/  # 定时任务
+│   ├── queen-room/       # 双人桌游《女王万岁》房间管理
+│   ├── queen-game/       # 双人桌游《女王万岁》对战引擎
 │   └── shared/           # 共享模块（扑克逻辑）
 ├── database-rules.md     # 数据库权限规则
 └── README.md
 ```
+
+## 双人桌游《女王万岁》（Long Live the Queen · Dieselpunk）
+
+主页底部「双人桌游」横置入口进入。两大帮派（白玫瑰 / 黑玫瑰）争夺女王之位，
+**集齐红黄蓝各 3 声望**，或**翻面对方公主**即获胜。
+
+- 页面：`miniprogram/pages/queen/`（lobby 大厅 / room 候场 / game 棋盘），蒸汽朋克风，独立于德扑视觉。
+- 云函数：`queen-room`（创建/加入/准备/开局）、`queen-game`（掷骰/能力结算/决策/布置/结束回合）。
+- 规则引擎在 `cloudfunctions/queen-game/lib/`（`engine.js` + `abilities.js`），全部判定在服务端。
+- 三集合隐藏信息架构：
+  - `queen_rooms`：房间元信息 + **公开棋局视图**（背面牌身份脱敏为 null），双方 watch。
+  - `queen_states`：完整真相（客户端不可读）。
+  - `queen_private`：每玩家私有视图（仅自己可读，含己方所有牌真身）。
+- 纯娱乐，不消耗/不结算积分；回合不计时。
 
 ## 注意事项
 
 - 所有牌局逻辑在服务端云函数执行，客户端不可信
 - 积分变更通过 `settlement` 云函数事务操作，保障原子性
 - `game_rounds` 集合客户端无访问权限（含手牌信息）
+- `queen_states` 集合客户端无访问权限；对手背面牌身份仅存于服务端，不进入公开视图
 - 断线重连通过 `db-watch.js` 的 `WatchManager` 自动处理

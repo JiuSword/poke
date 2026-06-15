@@ -1,5 +1,17 @@
 {
-  "condition": {},
+  "condition": {
+    "miniprogram": {
+      "list": [
+        {
+          "name": "pages/queen/game/game",
+          "pathName": "pages/queen/game/game",
+          "query": "roomId=d6a300ae6a2fee8b00bf5bea2f9ea2d6&roomCode=288640&myColor=white",
+          "scene": null,
+          "launchMode": "default"
+        }
+      ]
+    }
+  },
   "libVersion": "3.16.1",
   "projectname": "poke",
   "setting": {

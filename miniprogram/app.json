@@ -8,7 +8,10 @@
     "pages/game/game",
     "pages/settlement/settlement",
     "pages/ai-practice/ai-practice",
-    "pages/profile/profile"
+    "pages/profile/profile",
+    "pages/queen/lobby/lobby",
+    "pages/queen/room/room",
+    "pages/queen/game/game"
   ],
   "window": {
     "backgroundTextStyle": "light",

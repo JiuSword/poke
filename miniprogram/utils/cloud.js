@@ -23,4 +23,6 @@ module.exports = {
   roomManage: (action, data = {}) => callFunction('room-manage', { action, ...data }),
   gameAction: (action, data = {}) => callFunction('game-action', { action, ...data }),
   aiEngine: (action, data = {}) => callFunction('ai-engine', { routeAction: action, action, ...data }),
+  queenRoom: (action, data = {}) => callFunction('queen-room', { action, ...data }),
+  queenGame: (action, data = {}) => callFunction('queen-game', { action, ...data }),
 }

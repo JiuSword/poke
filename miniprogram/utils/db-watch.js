@@ -86,6 +86,63 @@ class WatchManager {
     return key
   }
 
+  // 订阅《女王万岁》房间公开视图（queen_rooms doc）
+  watchQueenRoom(roomId, onChange, onError) {
+    const key = `qroom_${roomId}`
+    this._unwatch(key)
+    const connect = () => {
+      this._unwatchSilent(key)
+      try {
+        const watcher = db.collection('queen_rooms')
+          .doc(roomId)
+          .watch({
+            onChange: snapshot => {
+              this.retryCount[key] = 0
+              if (snapshot.docs && snapshot.docs.length > 0) onChange(snapshot.docs[0])
+            },
+            onError: err => {
+              if (onError) onError(err)
+              this._scheduleRetry(key, connect)
+            },
+          })
+        this.watchers[key] = watcher
+        this.connectFns[key] = connect
+      } catch (e) {
+        this._scheduleRetry(key, connect)
+      }
+    }
+    this.retryCount[key] = 0
+    connect()
+    return key
+  }
+
+  // 订阅《女王万岁》个人私有视图（queen_private，按 roomId 过滤，权限只读到自己那份）
+  watchQueenPrivate(roomId, onChange) {
+    const key = `qpriv_${roomId}`
+    this._unwatch(key)
+    const connect = () => {
+      this._unwatchSilent(key)
+      try {
+        const watcher = db.collection('queen_private')
+          .where({ roomId })
+          .watch({
+            onChange: snapshot => {
+              this.retryCount[key] = 0
+              if (snapshot.docs && snapshot.docs.length > 0) onChange(snapshot.docs[0])
+            },
+            onError: () => this._scheduleRetry(key, connect),
+          })
+        this.watchers[key] = watcher
+        this.connectFns[key] = connect
+      } catch (e) {
+        this._scheduleRetry(key, connect)
+      }
+    }
+    this.retryCount[key] = 0
+    connect()
+    return key
+  }
+
   // 取消某个订阅（彻底清理，不再重连）
   unwatch(key) {
     this._clearRetryTimer(key)

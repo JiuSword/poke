@@ -89,4 +89,8 @@ Page({
   onProfile() {
     wx.navigateTo({ url: '/pages/profile/profile' })
   },
+
+  onQueenGame() {
+    wx.navigateTo({ url: '/pages/queen/lobby/lobby' })
+  },
 })
