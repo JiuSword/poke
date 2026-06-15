@@ -14,12 +14,14 @@ exports.main = async (event) => {
   switch (action) {
     case 'createRoom': return createRoom(OPENID)
     case 'joinRoom': return joinRoom(OPENID, event)
+    case 'rejoinRoom': return rejoinRoom(OPENID, event)
     case 'leaveRoom': return leaveRoom(OPENID, event)
     case 'setReady': return setReady(OPENID, event)
     case 'startGame': return startGame(OPENID, event)
     case 'dismissRoom': return dismissRoom(OPENID, event)
     case 'getRoomInfo': return getRoomInfo(event)
     case 'listPublicRooms': return listPublicRooms()
+    case 'listMyRooms': return listMyRooms(OPENID)
     case 'heartbeat': return heartbeat(OPENID, event)
     default: return { code: 400, msg: '未知操作' }
   }
@@ -43,6 +45,9 @@ async function createRoom(openid) {
   }
 
   const now = db.serverDate()
+  // 每次创建房间时，清理无人且未开始过的房间（异步，不阻塞）
+  cleanStaleRooms().catch(() => {})
+
   // 房主随机分到 white/black
   const hostColor = Math.random() < 0.5 ? 'white' : 'black'
   const roomData = {
@@ -60,13 +65,13 @@ async function createRoom(openid) {
         lastSeen: now,
       },
     ],
+    memberOpenids: [openid],   // 曾加入过的成员（用于历史房间查询 + 重连）
     view: null,
     stateId: null,
     createdAt: now,
     lastActivityAt: now,
   }
   const addRes = await db.collection('queen_rooms').add({ data: roomData })
-  cleanEmptyRooms().catch(() => {})
   return { code: 0, data: { roomId: addRes._id, roomCode } }
 }
 
@@ -98,10 +103,72 @@ async function joinRoom(openid, event) {
         isReady: false,
         lastSeen: now,
       }]),
+      memberOpenids: _.addToSet(openid),
       lastActivityAt: now,
     },
   })
   return { code: 0, data: { roomId: room._id, roomCode } }
+}
+
+// 重新加入：用于中途退出后通过历史房间继续游戏（房间可能处于 playing）
+async function rejoinRoom(openid, event) {
+  const { roomId } = event
+  const res = await db.collection('queen_rooms').doc(roomId).get().catch(() => null)
+  if (!res || !res.data) return { code: 404, msg: '房间不存在' }
+  const room = res.data
+  if (room.status === 'dismissed') return { code: 404, msg: '房间已解散' }
+  // 必须是该房间的历史成员
+  const isMember = (room.memberOpenids || []).includes(openid) || room.players.some(p => p.openid === openid)
+  if (!isMember) return { code: 403, msg: '你不是该房间成员' }
+
+  const now = db.serverDate()
+  const idx = room.players.findIndex(p => p.openid === openid)
+  if (idx !== -1) {
+    // 仍在座，刷新在线时间
+    const update = {}
+    update[`players.${idx}.lastSeen`] = now
+    update.lastActivityAt = now
+    await db.collection('queen_rooms').doc(roomId).update({ data: update })
+  } else {
+    // 不在座（曾离开过），且仍是历史成员 → 重新落座
+    if (room.players.length >= 2) return { code: 400, msg: '房间已满' }
+    const user = await getUser(openid)
+    if (!user) return { code: 404, msg: '用户不存在' }
+    // 颜色优先取私有视图里记录的原始颜色（游戏中已分配），否则取空缺一侧
+    let myColor = null
+    const privRes = await db.collection('queen_private').where({ roomId, _openid: openid }).get().catch(() => null)
+    if (privRes && privRes.data && privRes.data.length > 0 && privRes.data[0].myColor) {
+      myColor = privRes.data[0].myColor
+    } else {
+      const takenColor = room.players[0] && room.players[0].color
+      myColor = takenColor === 'white' ? 'black' : 'white'
+    }
+    await db.collection('queen_rooms').doc(roomId).update({
+      data: {
+        players: _.push([{
+          openid, nickname: user.nickname, avatar: user.avatar,
+          color: myColor, isReady: room.status === 'playing', lastSeen: now,
+        }]),
+        memberOpenids: _.addToSet(openid),
+        lastActivityAt: now,
+      },
+    })
+  }
+
+  // 返回进入所需信息：等待中回候场厅，游戏中直接进棋盘
+  const fresh = await db.collection('queen_rooms').doc(roomId).get()
+  const r = fresh.data
+  const me = (r.players || []).find(p => p.openid === openid)
+  return {
+    code: 0,
+    data: {
+      roomId,
+      roomCode: r.roomCode,
+      status: r.status,
+      isHost: r.hostOpenid === openid,
+      myColor: me ? me.color : null,
+    },
+  }
 }
 
 async function leaveRoom(openid, event) {
@@ -109,16 +176,13 @@ async function leaveRoom(openid, event) {
   const res = await db.collection('queen_rooms').doc(roomId).get().catch(() => null)
   if (!res || !res.data) return { code: 0 }
   const room = res.data
-  // 房主离开或对局未开始 → 解散
-  if (room.hostOpenid === openid || room.status === 'waiting') {
-    await db.collection('queen_rooms').doc(roomId).update({
-      data: { status: 'dismissed', lastActivityAt: db.serverDate() },
-    })
+  // 对局进行中：不解散房间，保留以便玩家通过历史房间再次加入继续游玩
+  if (room.status === 'playing') {
     return { code: 0 }
   }
-  // 非房主、非等待中（理论上不会到这）
+  // 等待中（未开始）：房主离开或任意人离开都解散这个空壳房
   await db.collection('queen_rooms').doc(roomId).update({
-    data: { players: room.players.filter(p => p.openid !== openid), lastActivityAt: db.serverDate() },
+    data: { status: 'dismissed', lastActivityAt: db.serverDate() },
   })
   return { code: 0 }
 }
@@ -199,13 +263,13 @@ async function startGame(openid, event) {
     data: { status: 'playing', stateId, view: _.set(buildPublicView(state)), lastActivityAt: db.serverDate() },
   })
 
-  // 写双方私有视图
+  // 写双方私有视图（必须显式写入 _openid，否则读权限会拦截客户端读取）
   for (const p of room.players) {
     const priv = buildPrivateView(state, p.color)
     await db.collection('queen_private').where({ roomId, _openid: p.openid }).get().then(async r => {
-      const data = { roomId, myColor: p.color, ...priv, updatedAt: db.serverDate() }
+      const data = { _openid: p.openid, roomId, myColor: p.color, ...priv, updatedAt: db.serverDate() }
       if (r.data.length > 0) {
-        await db.collection('queen_private').doc(r.data[0]._id).set({ data: { ...data, _openid: p.openid } })
+        await db.collection('queen_private').doc(r.data[0]._id).set({ data })
       } else {
         await db.collection('queen_private').add({ data })
       }
@@ -247,6 +311,28 @@ async function listPublicRooms() {
   return { code: 0, data: rooms }
 }
 
+// 历史房间：我曾加入过、且仍未解散的房间（最近游玩）
+async function listMyRooms(openid) {
+  const res = await db.collection('queen_rooms')
+    .where({
+      memberOpenids: openid,
+      status: _.in(['waiting', 'playing']),
+    })
+    .orderBy('lastActivityAt', 'desc')
+    .limit(10)
+    .get()
+  const rooms = res.data.map(r => ({
+    roomId: r._id,
+    roomCode: r.roomCode,
+    status: r.status,
+    isHost: r.hostOpenid === openid,
+    players: (r.players || []).map(p => ({ nickname: p.nickname, avatar: p.avatar })),
+    playerCount: (r.players || []).length,
+    winnerColor: r.view ? r.view.winnerColor : null,
+  }))
+  return { code: 0, data: rooms }
+}
+
 async function heartbeat(openid, event) {
   const { roomId } = event
   try {
@@ -257,16 +343,32 @@ async function heartbeat(openid, event) {
     if (idx === -1) return { code: 0 }
     const update = {}
     update[`players.${idx}.lastSeen`] = db.serverDate()
+    update.lastActivityAt = db.serverDate()
     await db.collection('queen_rooms').doc(roomId).update({ data: update })
   } catch (e) {}
   return { code: 0 }
 }
 
-// 清理 1 小时无活动的等待中空房 / 已解散房
-async function cleanEmptyRooms() {
-  const STALE = new Date(Date.now() - 60 * 60 * 1000)
+// 房间清理（每次创建房间时调用）：
+//  1) 从未开始过的房间（status=waiting）若 5 分钟内无人心跳 → 解散；
+//  2) 已开始过的房间（status=playing）仅当创建超过 72 小时才解散，
+//     否则保留，支持房间内玩家再次加入继续游玩。
+async function cleanStaleRooms() {
+  const ONLINE_MS = 5 * 60 * 1000          // 5 分钟无心跳视为无人
+  const KEEP_PLAYING_MS = 72 * 60 * 60 * 1000  // 进行中房间保留 72 小时
+  const now = Date.now()
+  const staleWaiting = new Date(now - ONLINE_MS)
+  const expirePlaying = new Date(now - KEEP_PLAYING_MS)
+
+  // 1) 未开始过、长时间无活动的房间
   await db.collection('queen_rooms')
-    .where({ status: 'waiting', lastActivityAt: _.lt(STALE) })
+    .where({ status: 'waiting', lastActivityAt: _.lt(staleWaiting) })
+    .update({ data: { status: 'dismissed' } })
+    .catch(() => {})
+
+  // 2) 进行中、创建超过 72 小时的房间
+  await db.collection('queen_rooms')
+    .where({ status: 'playing', createdAt: _.lt(expirePlaying) })
     .update({ data: { status: 'dismissed' } })
     .catch(() => {})
 }

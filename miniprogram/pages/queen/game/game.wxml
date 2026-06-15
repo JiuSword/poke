@@ -49,7 +49,7 @@
               <text wx:if="{{item.mine.init}}" class="tile-init">{{item.mine.init}}</text>
               <text class="tile-emoji">{{item.mine.emoji}}</text>
               <text class="tile-name">{{item.mine.name}}</text>
-              <text wx:if="{{item.mine.peek}}" class="peek-tag">暗</text>
+              <text wx:if="{{item.mine.peek}}" class="peek-tag">暗牌</text>
             </block>
             <view wx:else class="back-face">{{myColor==='white'?'🌹':'🥀'}}</view>
           </view>

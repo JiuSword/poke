@@ -116,15 +116,18 @@ class WatchManager {
     return key
   }
 
-  // 订阅《女王万岁》个人私有视图（queen_private，按 roomId 过滤，权限只读到自己那份）
-  watchQueenPrivate(roomId, onChange) {
+  // 订阅《女王万岁》个人私有视图（queen_private）
+  // 必须同时按 _openid 过滤，只订阅自己那一份：
+  //  1) 读规则为 auth.openid==doc._openid 时，查询条件须与权限一致，否则 watch 会因含无权文档而整体失败；
+  //  2) 一个房间有两份私有文档（双方各一），不加 _openid 会取错对方那份。
+  watchQueenPrivate(roomId, openid, onChange) {
     const key = `qpriv_${roomId}`
     this._unwatch(key)
     const connect = () => {
       this._unwatchSilent(key)
       try {
         const watcher = db.collection('queen_private')
-          .where({ roomId })
+          .where({ roomId, _openid: openid })
           .watch({
             onChange: snapshot => {
               this.retryCount[key] = 0

@@ -10,19 +10,23 @@ Page({
     joining: false,
     rooms: [],
     roomsLoading: false,
+    myRooms: [],
+    myRoomsLoading: false,
   },
 
   onLoad() {
     this.setData({ statusBarHeight: app.globalData.statusBarHeight || 20 })
     this.loadRooms()
+    this.loadMyRooms()
   },
 
   onShow() {
     this.loadRooms()
+    this.loadMyRooms()
   },
 
   onPullDownRefresh() {
-    this.loadRooms().then(() => wx.stopPullDownRefresh())
+    Promise.all([this.loadRooms(), this.loadMyRooms()]).then(() => wx.stopPullDownRefresh())
   },
 
   onCodeInput(e) {
@@ -38,6 +42,22 @@ Page({
       // 静默
     } finally {
       this.setData({ roomsLoading: false })
+    }
+  },
+
+  async loadMyRooms() {
+    this.setData({ myRoomsLoading: true })
+    try {
+      const res = await queenRoom('listMyRooms')
+      const myRooms = (res.data || []).map(r => ({
+        ...r,
+        statusText: r.status === 'playing' ? '进行中' : '等待中',
+      }))
+      this.setData({ myRooms })
+    } catch (e) {
+      // 静默
+    } finally {
+      this.setData({ myRoomsLoading: false })
     }
   },
 
@@ -75,6 +95,30 @@ Page({
       wx.navigateTo({
         url: `/pages/queen/room/room?roomId=${res.data.roomId}&roomCode=${res.data.roomCode}`,
       })
+    } catch (e) {
+      wx.showToast({ title: e.message || '加入失败', icon: 'none' })
+    } finally {
+      this.setData({ joining: false })
+    }
+  },
+
+  // 历史房间：再次加入继续游玩
+  async onRejoin(e) {
+    if (this.data.joining) return
+    const { roomid } = e.currentTarget.dataset
+    this.setData({ joining: true })
+    try {
+      const res = await queenRoom('rejoinRoom', { roomId: roomid })
+      const { roomId, roomCode, status, isHost, myColor } = res.data
+      if (status === 'playing') {
+        wx.navigateTo({
+          url: `/pages/queen/game/game?roomId=${roomId}&roomCode=${roomCode}&myColor=${myColor || ''}`,
+        })
+      } else {
+        wx.navigateTo({
+          url: `/pages/queen/room/room?roomId=${roomId}&roomCode=${roomCode}${isHost ? '&isHost=1' : ''}`,
+        })
+      }
     } catch (e) {
       wx.showToast({ title: e.message || '加入失败', icon: 'none' })
     } finally {

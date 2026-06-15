@@ -77,3 +77,15 @@
 .room-code { font-size: 30rpx; color: #d8bd86; font-weight: bold; letter-spacing: 2rpx; }
 .room-count { font-size: 24rpx; color: #8a7a55; margin-top: 4rpx; }
 .room-go { font-size: 44rpx; color: #b08d57; }
+
+/* 历史房间标签 */
+.room-tags { display: flex; gap: 10rpx; margin-top: 8rpx; }
+.room-badge {
+  font-size: 20rpx; padding: 2rpx 12rpx; border-radius: 6rpx;
+  border: 1rpx solid; line-height: 1.6;
+}
+.badge-playing { color: #6fb0d8; border-color: rgba(46,111,158,0.6); background: rgba(46,111,158,0.15); }
+.badge-waiting { color: #9c8a64; border-color: rgba(156,138,100,0.5); background: rgba(156,138,100,0.12); }
+.badge-host { color: #e8c45a; border-color: rgba(212,160,23,0.6); background: rgba(212,160,23,0.12); }
+/* 历史房间「继续」按钮文字偏小 */
+.room-go-resume { font-size: 28rpx; white-space: nowrap; }

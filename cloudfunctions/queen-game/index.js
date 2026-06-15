@@ -55,10 +55,11 @@ async function persist(room, state) {
     },
   })
   // 重写双方私有视图（位置可能因 reposition/spy 变化），用 set 整体替换
+  // 必须显式写入 _openid，否则 queen_private 的读权限(auth.openid==doc._openid)会拦截客户端读取
   for (const p of room.players) {
     const priv = buildPrivateView(state, p.color)
     const r = await db.collection('queen_private').where({ roomId: room._id, _openid: p.openid }).get()
-    const data = { roomId: room._id, myColor: p.color, ...priv, updatedAt: db.serverDate() }
+    const data = { _openid: p.openid, roomId: room._id, myColor: p.color, ...priv, updatedAt: db.serverDate() }
     if (r.data.length > 0) {
       await db.collection('queen_private').doc(r.data[0]._id).set({ data })
     } else {

@@ -55,6 +55,29 @@
       </view>
     </view>
 
+    <!-- 历史房间 -->
+    <view class="panel">
+      <view class="panel-label">历史房间 · 继续游戏</view>
+      <view wx:if="{{myRoomsLoading && myRooms.length === 0}}" class="rooms-empty">加载中…</view>
+      <view wx:elif="{{myRooms.length === 0}}" class="rooms-empty">暂无历史房间</view>
+      <view wx:else class="rooms-list">
+        <view wx:for="{{myRooms}}" wx:key="roomId" class="room-card"
+          data-roomid="{{item.roomId}}" bindtap="onRejoin">
+          <view class="room-avatars">
+            <image wx:for="{{item.players}}" wx:for-item="p" wx:key="index" class="room-av" src="{{p.avatar}}" mode="aspectFill" />
+          </view>
+          <view class="room-meta">
+            <text class="room-code">#{{item.roomCode}}</text>
+            <view class="room-tags">
+              <text class="room-badge {{item.status === 'playing' ? 'badge-playing' : 'badge-waiting'}}">{{item.statusText}}</text>
+              <text wx:if="{{item.isHost}}" class="room-badge badge-host">房主</text>
+            </view>
+          </view>
+          <view class="room-go room-go-resume">继续 ›</view>
+        </view>
+      </view>
+    </view>
+
     <view class="safe-pad"></view>
   </scroll-view>
 </view>

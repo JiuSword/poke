@@ -78,7 +78,11 @@
     repeating-linear-gradient(45deg, rgba(176,141,87,0.08) 0 6rpx, transparent 6rpx 12rpx),
     linear-gradient(165deg, #2f323a, #1d1f24);
 }
-.tile-peek { opacity: 0.96; border-style: dashed; }
+.tile-peek {
+  border-style: dashed;
+  border-color: rgba(216,189,134,0.7);
+  background: linear-gradient(165deg, #4a4133 0%, #322a1e 60%, #241d12 100%);
+}
 .tile-selected { box-shadow: 0 0 0 3rpx #e3cf9c, 0 3rpx 8rpx rgba(0,0,0,0.4); }
 .tile-init {
   position: absolute; top: 6rpx; left: 8rpx;
@@ -90,9 +94,10 @@
 .tile-name { font-size: 22rpx; color: #cbb98e; margin-top: 8rpx; letter-spacing: 1rpx; }
 .back-face { font-size: 50rpx; opacity: 0.45; }
 .peek-tag {
-  position: absolute; bottom: 6rpx; right: 8rpx;
-  font-size: 18rpx; color: #2a1f10; background: #b08d57;
-  padding: 1rpx 8rpx; border-radius: 6rpx;
+  position: absolute; top: 4rpx; right: 4rpx;
+  font-size: 16rpx; color: #2a1f10; background: #d8bd86;
+  padding: 1rpx 6rpx; border-radius: 5rpx; line-height: 1.4;
+  font-weight: bold;
 }
 .opp-tile.p-red, .my-tile.p-red { border-color: rgba(192,57,43,0.55); }
 .opp-tile.p-yellow, .my-tile.p-yellow { border-color: rgba(212,160,23,0.55); }

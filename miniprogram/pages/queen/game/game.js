@@ -49,6 +49,7 @@ Page({
   _priv: null,
 
   onLoad(options) {
+    this.myOpenid = app.globalData.userInfo?._openid || ''
     this.setData({
       statusBarHeight: app.globalData.statusBarHeight || 20,
       roomId: options.roomId,
@@ -68,12 +69,14 @@ Page({
   },
 
   onUnload() {
+    if (this._privRetry) { clearTimeout(this._privRetry); this._privRetry = null }
     if (this.pubKey) watchManager.unwatch(this.pubKey)
     if (this.privKey) watchManager.unwatch(this.privKey)
     this.stopHeartbeat()
   },
 
   onAppShow() {
+    if (this._privRetry) { clearTimeout(this._privRetry); this._privRetry = null }
     if (this.pubKey) watchManager.unwatch(this.pubKey)
     if (this.privKey) watchManager.unwatch(this.privKey)
     this.startWatch()
@@ -94,7 +97,17 @@ Page({
       this._pub = doc
       this.rebuild()
     }, () => {})
-    this.privKey = watchManager.watchQueenPrivate(this.data.roomId, doc => {
+    this.watchPrivate()
+  },
+
+  // 私有视图订阅：需 openid，若尚未就绪则稍后重试（直连/重连进入时 userInfo 可能未加载）
+  watchPrivate() {
+    if (!this.myOpenid) this.myOpenid = app.globalData.userInfo?._openid || ''
+    if (!this.myOpenid) {
+      this._privRetry = setTimeout(() => this.watchPrivate(), 500)
+      return
+    }
+    this.privKey = watchManager.watchQueenPrivate(this.data.roomId, this.myOpenid, doc => {
       this._priv = doc
       // 私有视图可能先于公开视图返回 myColor
       if (doc.myColor && !this.data.myColor) {
@@ -349,6 +362,16 @@ Page({
   },
 
   onExit() {
+    // 对局未结束：提示可通过历史房间继续
+    if (this.data.loaded && !this.data.winnerColor) {
+      wx.showModal({
+        title: '退出对局',
+        content: '对局进度会保留，可在大厅「历史房间」再次加入继续。确定退出？',
+        confirmText: '退出',
+        success: res => { if (res.confirm) wx.navigateBack() },
+      })
+      return
+    }
     wx.navigateBack()
   },
 
