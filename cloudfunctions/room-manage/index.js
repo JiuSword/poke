@@ -22,6 +22,7 @@ exports.main = async (event, context) => {
     case 'sitDown': return sitDown(OPENID, event)
     case 'standUp': return standUp(OPENID, event)
     case 'leaveInGame': return leaveInGame(OPENID, event)
+    case 'removeOfflinePlayer': return removeOfflinePlayer(OPENID, event)
     case 'cancelStandUp': return cancelStandUp(OPENID, event)
     case 'heartbeat': return heartbeat(OPENID, event)
     case 'cleanRooms': return cleanEmptyRooms().then(() => ({ code: 0 }))
@@ -117,6 +118,7 @@ async function createRoom(openid, event) {
         isSmallBlind: false,
         isBigBlind: false,
         isCurrentActor: false,
+        lastSeen: s.lastSeen,
       })),
       actionHistory: [],
       winners: [],
@@ -269,6 +271,7 @@ async function joinRoom(openid, event) {
   viewUpdate[`seats.${emptyIndex}.nickname`] = user.nickname
   viewUpdate[`seats.${emptyIndex}.avatar`] = user.avatar
   viewUpdate[`seats.${emptyIndex}.status`] = 'waiting'
+  viewUpdate[`seats.${emptyIndex}.lastSeen`] = now
   viewUpdate.updatedAt = now
   await db.collection('room_views').doc(room._id).update({ data: viewUpdate })
 
@@ -533,6 +536,7 @@ async function sitDown(openid, event) {
   seatUpdate[`seats.${seatIndex}.status`] = 'waiting'
   seatUpdate[`seats.${seatIndex}.isReady`] = false
   seatUpdate[`seats.${seatIndex}.pendingAction`] = null
+  seatUpdate[`seats.${seatIndex}.lastSeen`] = now
 
   await db.collection('rooms').doc(roomId).update({ data: seatUpdate })
 
@@ -543,6 +547,7 @@ async function sitDown(openid, event) {
   viewUpdate[`seats.${seatIndex}.chips`] = restoredChips
   viewUpdate[`seats.${seatIndex}.totalRefillCost`] = restoredRefillCost
   viewUpdate[`seats.${seatIndex}.status`] = 'waiting'
+  viewUpdate[`seats.${seatIndex}.lastSeen`] = now
   await db.collection('room_views').doc(roomId).update({ data: viewUpdate })
 
   return { code: 0 }
@@ -668,6 +673,47 @@ async function leaveInGame(openid, event) {
   return { code: 0 }
 }
 
+// 让已离线、且当前轮到其行动的玩家弃牌并离座。任意在座玩家可发起，服务端强校验。
+const OFFLINE_THRESHOLD_MS = 20 * 1000
+async function removeOfflinePlayer(callerOpenid, event) {
+  const { roomId, targetSeatIndex } = event
+
+  const roomRes = await db.collection('rooms').doc(roomId).get()
+  const room = roomRes.data
+  if (!room) return { code: 404, msg: '房间不存在' }
+
+  // 发起者必须在本房间座位上
+  if (!room.seats.some(s => s.openid === callerOpenid)) {
+    return { code: 400, msg: '无权操作' }
+  }
+
+  const target = room.seats[targetSeatIndex]
+  if (!target || !target.openid) return { code: 400, msg: '该座位无玩家' }
+  if (target.openid === callerOpenid) return { code: 400, msg: '不能对自己操作' }
+
+  // 必须在牌局进行中
+  if (room.status !== 'playing' || !room.currentGameRoundId) {
+    return { code: 400, msg: '当前不可操作' }
+  }
+
+  // 必须确实轮到该玩家行动
+  const roundRes = await db.collection('game_rounds').doc(room.currentGameRoundId).get()
+  const round = roundRes.data
+  if (!round || round.phase === 'ended') return { code: 400, msg: '牌局已变化' }
+  if (round.currentActorSeatIndex !== targetSeatIndex) {
+    return { code: 400, msg: '未轮到该玩家' }
+  }
+
+  // 必须确实离线
+  if (!target.lastSeen ||
+      (Date.now() - new Date(target.lastSeen).getTime()) < OFFLINE_THRESHOLD_MS) {
+    return { code: 400, msg: '该玩家仍在线' }
+  }
+
+  // 复用 leaveInGame：弃牌（经 game-action 推进）+ 清座位 + 同步 room_views
+  return leaveInGame(target.openid, { roomId })
+}
+
 async function standUp(openid, event) {
   const { roomId } = event
   const roomRes = await db.collection('rooms').doc(roomId).get()
@@ -738,9 +784,14 @@ async function heartbeat(openid, event) {
     if (!room) return { code: 0 }
     const seatIndex = room.seats.findIndex(s => s.openid === openid)
     if (seatIndex === -1) return { code: 0 }
+    const now = db.serverDate()
     const update = {}
-    update[`seats.${seatIndex}.lastSeen`] = db.serverDate()
+    update[`seats.${seatIndex}.lastSeen`] = now
     await db.collection('rooms').doc(roomId).update({ data: update })
+    // 同步到 room_views，让其他客户端能看到在线状态
+    const viewUpdate = {}
+    viewUpdate[`seats.${seatIndex}.lastSeen`] = now
+    await db.collection('room_views').doc(roomId).update({ data: viewUpdate }).catch(() => {})
   } catch (e) {}
   return { code: 0 }
 }

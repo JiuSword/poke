@@ -461,6 +461,7 @@ async function syncRoomView(roomId, gameRoundId, round, room) {
       isCurrentActor: i === round.currentActorSeatIndex,
       pendingAction: seat.pendingAction || null,
       totalRefillCost: seat.totalRefillCost || 0,  // 累计补充消耗积分
+      lastSeen: seat.lastSeen || null,  // 在线检测：保留心跳时间，避免开局重建时丢失
     }
   })
 

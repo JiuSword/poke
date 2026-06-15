@@ -115,6 +115,7 @@
               <image wx:if="{{item.avatar}}" class="p-avatar" src="{{item.avatar}}" mode="aspectFill" />
               <view wx:else class="p-avatar p-avatar-placeholder">{{fmt.lastChar(item.nickname)}}</view>
               <view wx:if="{{item.isDealer}}" class="dealer-chip">D</view>
+              <view wx:if="{{item.openid}}" class="online-dot {{item.isOnline ? 'online' : 'offline'}}" />
             </view>
             <view class="player-info-box">
               <text class="p-name">{{item.nickname}}</text>
@@ -129,6 +130,9 @@
           <view wx:if="{{item.betInPhase > 0}}" class="bet-bubble">{{item.betInPhase}}</view>
           <!-- 弃牌 -->
           <text wx:if="{{item.status === 'folded'}}" class="folded-tag">弃牌</text>
+          <!-- 离线且轮到其行动：任意玩家可让其弃牌离座 -->
+          <view wx:if="{{item.isCurrentActor && !item.isOnline}}"
+            class="kick-offline-btn" catchtap="onRemoveOffline" data-seat-index="{{item.seatIndex}}">弃牌离座</view>
           <!-- 行动高亮环 -->
           <view wx:if="{{item.isCurrentActor}}" class="acting-glow" />
           <!-- SB/BB 标记 -->
@@ -168,9 +172,16 @@
 
     <!-- 筹码 + 倒计时信息行 -->
     <view class="my-info-bar">
-      <view class="my-chips-block">
-        <text class="my-chips-val">{{myChips}}</text>
-        <text wx:if="{{myRefillCost > 0}}" class="my-refill-hint">-{{myRefillCost}}积分</text>
+      <view class="my-info-left">
+        <view wx:if="{{mySeat && mySeat.openid}}" class="my-avatar-box">
+          <image wx:if="{{mySeat.avatar}}" class="my-avatar" src="{{mySeat.avatar}}" mode="aspectFill" />
+          <view wx:else class="my-avatar my-avatar-ph">{{fmt.lastChar(mySeat.nickname)}}</view>
+          <view class="online-dot online" />
+        </view>
+        <view class="my-chips-block">
+          <text class="my-chips-val">{{myChips}}</text>
+          <text wx:if="{{myRefillCost > 0}}" class="my-refill-hint">-{{myRefillCost}}积分</text>
+        </view>
       </view>
       <view wx:if="{{isMyTurn}}" class="countdown-pill">{{countdown}}s</view>
     </view>

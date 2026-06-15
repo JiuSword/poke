@@ -119,6 +119,7 @@ Page({
   watchKeys: [],
   countdownInterval: null,
   heartbeatInterval: null,
+  onlineTicker: null,
   handResultTimer: null,
 
   onLoad(options) {
@@ -138,6 +139,7 @@ Page({
     this.startWatch()
     this.loadRoomConfig(options.roomId)
     this.startHeartbeat(options.roomId)
+    this.startOnlineTicker()
   },
 
   startHeartbeat(roomId) {
@@ -152,7 +154,7 @@ Page({
       }).catch(() => {})
     }
     sendBeat()
-    this.heartbeatInterval = setInterval(sendBeat, 30000)
+    this.heartbeatInterval = setInterval(sendBeat, 10000)
   },
 
   stopHeartbeat() {
@@ -160,6 +162,40 @@ Page({
       clearInterval(this.heartbeatInterval)
       this.heartbeatInterval = null
     }
+  },
+
+  // 在线状态：离线玩家停止心跳后不会再触发 watch，需本地定时重算
+  startOnlineTicker() {
+    this.stopOnlineTicker()
+    this.onlineTicker = setInterval(() => {
+      const seats = this.data.seats || []
+      if (!seats.length) return
+      const recomputed = this._withOnline(seats)
+      // 仅当在线状态有变化时才 setData，避免无谓刷新
+      const changed = recomputed.some((s, i) => s.isOnline !== seats[i].isOnline)
+      if (changed) this.setData({ seats: recomputed })
+    }, 3000)
+  },
+
+  stopOnlineTicker() {
+    if (this.onlineTicker) {
+      clearInterval(this.onlineTicker)
+      this.onlineTicker = null
+    }
+  },
+
+  // 给每个座位标注 isOnline。用全场最新 lastSeen 作时间锚点，抵消客户端与服务器时钟偏差
+  _withOnline(seats) {
+    const OFFLINE_MS = 20000
+    const { myOpenid } = this.data
+    const stamps = seats.filter(s => s.lastSeen).map(s => new Date(s.lastSeen).getTime())
+    const nowAnchor = Math.max(Date.now(), ...stamps)
+    return seats.map(s => ({
+      ...s,
+      isOnline: !s.openid ? false
+        : s.openid === myOpenid ? true
+        : (s.lastSeen ? (nowAnchor - new Date(s.lastSeen).getTime()) < OFFLINE_MS : false),
+    }))
   },
 
   async loadRoomConfig(roomId) {
@@ -177,6 +213,7 @@ Page({
     if (this._foldAudio) { this._foldAudio.destroy(); this._foldAudio = null }
     if (this._checkAudio) { this._checkAudio.destroy(); this._checkAudio = null }
     this.stopHeartbeat()
+    this.stopOnlineTicker()
     this.clearCountdown()
     this.watchKeys.forEach(k => watchManager.unwatch(k))
   },
@@ -214,6 +251,9 @@ Page({
       const urlMap = await resolveAvatars(cloudAvatars)
       seats = seats.map(s => ({ ...s, avatar: urlMap[s.avatar] || s.avatar }))
     }
+
+    // 标注每个座位的在线状态（绿点/灰点）
+    seats = this._withOnline(seats)
 
     const mySeat = seats.find(s => s.openid === myOpenid)
     const mySeatIndex = mySeat ? mySeat.seatIndex : -1
@@ -296,6 +336,7 @@ Page({
 
     this.setData({
       seats,
+      mySeat: mySeat || null,
       communityCards: newCommunityCards,
       prevCardCount,
       pot: roomView.pot || 0,
@@ -608,6 +649,24 @@ Page({
     } catch (err) {
       wx.showToast({ title: err.message || '坐下失败', icon: 'none' })
     }
+  },
+
+  // 让当前轮到行动的离线玩家弃牌并离座（任意在座玩家可发起）
+  onRemoveOffline(e) {
+    const seatIndex = Number(e.currentTarget.dataset.seatIndex)
+    wx.showModal({
+      title: '离线玩家',
+      content: '该玩家已离线，确认让其弃牌并离座？',
+      success: async r => {
+        if (!r.confirm) return
+        try {
+          const { roomManage } = require('../../utils/cloud')
+          await roomManage('removeOfflinePlayer', { roomId: this.data.roomId, targetSeatIndex: seatIndex })
+        } catch (err) {
+          wx.showToast({ title: err.message || '操作失败', icon: 'none' })
+        }
+      },
+    })
   },
 
   async onStandUp() {

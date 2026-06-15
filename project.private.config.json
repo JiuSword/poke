@@ -1,50 +1,23 @@
 {
-  "condition": {
-    "miniprogram": {
-      "list": [
-        {
-          "name": "pages/room/lobby/lobby",
-          "pathName": "pages/room/lobby/lobby",
-          "query": "",
-          "scene": null,
-          "launchMode": "default"
-        },
-        {
-          "name": "pages/home/home",
-          "pathName": "pages/home/home",
-          "query": "",
-          "launchMode": "default",
-          "scene": null
-        },
-        {
-          "name": "pages/login/login",
-          "pathName": "pages/login/login",
-          "query": "",
-          "launchMode": "default",
-          "scene": null
-        },
-        {
-          "name": "pages/room/join/join",
-          "pathName": "pages/room/join/join",
-          "query": "",
-          "launchMode": "default",
-          "scene": null
-        },
-        {
-          "name": "pages/ai-practice/ai-practice",
-          "pathName": "pages/ai-practice/ai-practice",
-          "query": "",
-          "launchMode": "default",
-          "scene": null
-        },
-        {
-          "name": "pages/game/game",
-          "pathName": "pages/game/game",
-          "query": "",
-          "launchMode": "default",
-          "scene": null
-        }
-      ]
-    }
+  "condition": {},
+  "libVersion": "3.16.1",
+  "projectname": "poke",
+  "setting": {
+    "urlCheck": false,
+    "coverView": true,
+    "lazyloadPlaceholderEnable": false,
+    "skylineRenderEnable": false,
+    "preloadBackgroundData": false,
+    "autoAudits": false,
+    "useApiHook": true,
+    "showShadowRootInWxmlPanel": true,
+    "useStaticServer": false,
+    "useLanDebug": false,
+    "showES6CompileOption": false,
+    "compileHotReLoad": true,
+    "checkInvalidKey": true,
+    "ignoreDevUnusedFiles": true,
+    "bigPackageSizeSupport": false,
+    "useIsolateContext": true
   }
 }

@@ -170,6 +170,22 @@
   background: #ffd700; color: #000; font-size: 15rpx; font-weight: bold;
   display: flex; align-items: center; justify-content: center;
 }
+/* 在线状态圆点：头像左下角，绿=在线 灰=离线 */
+.online-dot {
+  position: absolute; left: -2rpx; bottom: -2rpx;
+  width: 18rpx; height: 18rpx; border-radius: 50%;
+  border: 2rpx solid #1a1a2e;
+}
+.online-dot.online { background: #3ad29f; }
+.online-dot.offline { background: #8a8a8a; }
+/* 离线玩家弃牌离座按钮 */
+.kick-offline-btn {
+  position: absolute; bottom: -36rpx; left: 50%; transform: translateX(-50%);
+  white-space: nowrap; padding: 6rpx 16rpx; border-radius: 24rpx;
+  font-size: 20rpx; color: #fff; z-index: 5;
+  background: linear-gradient(135deg, #e94560, #c73652);
+  box-shadow: 0 4rpx 12rpx rgba(233,69,96,0.4);
+}
 .player-info-box { display: flex; flex-direction: column; }
 .p-name { font-size: 19rpx; color: #fff; white-space: nowrap; max-width: 110rpx; overflow: hidden; text-overflow: ellipsis; }
 .p-chips { font-size: 21rpx; color: #ffd700; font-weight: bold; }
@@ -258,6 +274,13 @@
 .my-info-bar {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 30rpx;
+}
+.my-info-left { display: flex; align-items: center; }
+.my-avatar-box { position: relative; flex-shrink: 0; margin-right: 20rpx; }
+.my-avatar { width: 64rpx; height: 64rpx; border-radius: 50%; border: 2rpx solid rgba(255,215,0,0.5); }
+.my-avatar-ph {
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.12); color: #fff; font-size: 28rpx; font-weight: bold;
 }
 .my-chips-block { display: flex; flex-direction: column; gap: 4rpx; }
 .my-chips-val { font-size: 48rpx; font-weight: bold; color: #ffd700; }
