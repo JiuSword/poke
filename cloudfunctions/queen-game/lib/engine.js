@@ -85,18 +85,29 @@ function stealPrestige(state, color, c) {
     if (state.prestige[color][c] >= 6) { state.prestige[color][c] = 0; log(state, `${colorName(color)}方 ${COLOR_NAME[c]}声望达6个全部退回`) }
   }
 }
-// 给对手 1 个指定色（entertainer）
+// 给对手 1 个指定色（entertainer）：从自己扣 1 个，转移给对手（只能给自己拥有的颜色）
 function givePrestige(state, color, c) {
   const o = opp(color)
+  if (state.prestige[color][c] <= 0) {
+    log(state, `${colorName(color)}方没有 ${COLOR_NAME[c]}声望可赠送`)
+    return false
+  }
+  state.prestige[color][c] -= 1
   state.prestige[o][c] += 1
-  log(state, `${colorName(color)}方给予${colorName(o)}方 1 ${COLOR_NAME[c]}声望`)
+  log(state, `${colorName(color)}方赠予${colorName(o)}方 1 ${COLOR_NAME[c]}声望`)
   if (state.prestige[o][c] >= 6) { state.prestige[o][c] = 0; log(state, `${colorName(o)}方 ${COLOR_NAME[c]}声望达6个全部退回`) }
+  return true
 }
 
 // 对手是否有任意声望
 function oppHasAnyPrestige(state, color) {
   const p = state.prestige[opp(color)]
   return p.r > 0 || p.y > 0 || p.b > 0
+}
+// 自己拥有的声望颜色（用于"赠送给对手"时的可选项）
+function selfColorsOwned(state, color) {
+  const p = state.prestige[color]
+  return ['r', 'y', 'b'].filter(c => p[c] > 0)
 }
 function selfColorsAvailableFromOpp(state, color) {
   const p = state.prestige[opp(color)]
@@ -168,7 +179,7 @@ module.exports = {
   POSITIONS, POINT_SYMMETRY, CHARACTERS, COLOR_NAME,
   clone, opp, colorName, effectiveInit, effectiveRole, log,
   gainPrestige, removeOppPrestige, stealPrestige, givePrestige,
-  oppHasAnyPrestige, selfColorsAvailableFromOpp,
+  oppHasAnyPrestige, selfColorsAvailableFromOpp, selfColorsOwned,
   turnFaceDown, turnFaceUp, isGuardedBy,
   checkVictory, checkPrestigeVictory,
 }

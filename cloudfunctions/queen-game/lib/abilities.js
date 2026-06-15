@@ -179,9 +179,22 @@ function applyAbility(state, color, pos, rawRole) {
     }
     case 'ENTERTAINER': {
       E.gainPrestige(state, color, 'b')
-      // 先给对手 1 个，再从对手拿 1 个
-      pushChoice(state, { owner: color, type: 'entertainer_give', role, optional: false,
-        options: ['r', 'y', 'b'], label: '选择给对手 1 个声望' })
+      // 先给对手 1 个（仅能给自己拥有的颜色；若自己无声望则跳过），再从对手拿 1 个
+      const giveColors = E.selfColorsOwned(state, color)
+      if (giveColors.length > 0) {
+        pushChoice(state, { owner: color, type: 'entertainer_give', role, optional: false,
+          options: giveColors, label: '赠予对手 1 个声望（仅限你拥有的）' })
+      } else {
+        E.log(state, `${E.colorName(color)}方没有声望可赠送，跳过`)
+        // 直接进入"从对手拿"环节
+        const takeColors = E.selfColorsAvailableFromOpp(state, color)
+        if (takeColors.length > 0) {
+          pushChoice(state, { owner: color, type: 'entertainer_take', role, optional: false,
+            options: takeColors, label: '从对手拿 1 个声望' })
+        } else {
+          E.log(state, `对手无声望可拿`)
+        }
+      }
       return
     }
     case 'SPY': {
@@ -294,7 +307,8 @@ function resolveChoice(state, color, choiceId, payload) {
       break
     }
     case 'entertainer_give': {
-      if (!['r', 'y', 'b'].includes(payload.color)) return { ok: false, msg: '非法选择' }
+      // 只能赠送自己拥有的颜色
+      if (!E.selfColorsOwned(state, color).includes(payload.color)) return { ok: false, msg: '你没有该色声望' }
       E.givePrestige(state, color, payload.color)
       state.pendingChoices.shift()
       // 接着从对手拿 1 个（若对手有）
@@ -302,7 +316,6 @@ function resolveChoice(state, color, choiceId, payload) {
       if (avail.length > 0) {
         pushChoice(state, { owner: color, type: 'entertainer_take', role: 'ENTERTAINER', optional: false,
           options: avail, label: '从对手拿 1 个声望' })
-        // 新决策已 unshift? 不，pushChoice 是 push 到队尾；此时队列应只剩它
       } else {
         E.log(state, `对手无声望可拿`)
       }
