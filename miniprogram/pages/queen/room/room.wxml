@@ -1,0 +1,53 @@
+<!-- pages/queen/room/room.wxml -->
+<view class="qpage">
+  <view class="qnav" style="padding-top: {{statusBarHeight}}px">
+    <view class="qnav-back" bindtap="onBack">‹</view>
+    <view class="qnav-title">候场厅</view>
+    <view class="qnav-spacer"></view>
+  </view>
+
+  <view class="qbody">
+    <!-- 房间号 -->
+    <view class="codebar" bindtap="onCopyCode">
+      <text class="codebar-label">房间号</text>
+      <text class="codebar-code">{{roomCode}}</text>
+      <text class="codebar-copy">复制</text>
+    </view>
+
+    <!-- 双方对位 -->
+    <view class="versus">
+      <block wx:for="{{players}}" wx:key="openid">
+        <view class="seat {{item.color === 'white' ? 'seat-white' : 'seat-black'}}">
+          <view class="seat-rose">{{item.color === 'white' ? '🌹' : '🥀'}}</view>
+          <image class="seat-avatar" src="{{item.avatar}}" mode="aspectFill" />
+          <text class="seat-name">{{item.nickname}}{{item.isMe ? '（你）' : ''}}</text>
+          <text class="seat-color">{{item.colorName}}</text>
+          <view class="seat-ready {{item.isReady ? 'is-ready' : ''}}">{{item.isReady ? '已准备' : '未准备'}}</view>
+        </view>
+      </block>
+      <!-- 空位占位 -->
+      <view wx:if="{{players.length < 2}}" class="seat seat-empty">
+        <view class="seat-rose">🕯️</view>
+        <view class="seat-waiting">等待对手…</view>
+        <text class="seat-hint">分享房间号邀请好友</text>
+      </view>
+    </view>
+
+    <view class="vs-badge">VS</view>
+
+    <!-- 操作区 -->
+    <view class="room-actions">
+      <!-- 准备按钮：仅非房主显示，房主默认已准备 -->
+      <button wx:if="{{!isHost}}" class="btn-iron ready-btn {{iAmReady ? 'readied' : ''}}" bindtap="onToggleReady">
+        {{iAmReady ? '取消准备' : '准备'}}
+      </button>
+      <button wx:if="{{isHost}}" class="btn-brass start-btn {{(!bothReady || starting) ? 'is-loading' : ''}}" bindtap="onStart">
+        开始对局
+      </button>
+      <button class="btn-iron share-btn" open-type="share">邀请好友</button>
+    </view>
+
+    <view wx:if="{{isHost && !bothReady}}" class="tip">等待对手准备后即可开始对局</view>
+    <view wx:if="{{!isHost}}" class="tip">点击「准备」，等待房主开始对局…</view>
+  </view>
+</view>

@@ -1,0 +1,79 @@
+/* pages/queen/lobby/lobby.wxss */
+@import "../queen-theme.wxss";
+
+.hero {
+  text-align: center;
+  padding: 50rpx 40rpx 10rpx;
+}
+.hero-rose { font-size: 90rpx; line-height: 1; }
+.hero-title {
+  margin-top: 16rpx;
+  font-size: 40rpx;
+  font-weight: bold;
+  letter-spacing: 4rpx;
+  color: #e3cf9c;
+  text-shadow: 0 3rpx 0 rgba(0,0,0,0.5);
+}
+.hero-sub {
+  margin-top: 14rpx;
+  font-size: 25rpx;
+  letter-spacing: 2rpx;
+  color: #9c8a64;
+}
+.hero-line {
+  height: 2rpx;
+  margin: 26rpx auto;
+  width: 60%;
+  background: linear-gradient(90deg, transparent, rgba(176,141,87,0.6), transparent);
+}
+.hero-desc {
+  font-size: 25rpx;
+  line-height: 1.7;
+  color: #8d7f5e;
+  padding: 0 10rpx;
+}
+
+.btn-create { width: 100%; }
+
+.code-row { display: flex; align-items: center; gap: 20rpx; }
+.code-input {
+  flex: 1;
+  height: 80rpx;
+  background: rgba(0,0,0,0.35);
+  border: 1rpx solid rgba(176,141,87,0.35);
+  border-radius: 10rpx;
+  color: #e3cf9c;
+  font-size: 34rpx;
+  letter-spacing: 8rpx;
+  text-align: center;
+  box-sizing: border-box;
+}
+.code-ph { color: #6a6452; letter-spacing: 2rpx; font-size: 26rpx; }
+
+.rooms-empty {
+  text-align: center;
+  color: #6f6750;
+  font-size: 26rpx;
+  padding: 36rpx 0;
+}
+.rooms-list { display: flex; flex-direction: column; gap: 18rpx; }
+.room-card {
+  display: flex;
+  align-items: center;
+  padding: 18rpx 20rpx;
+  background: rgba(0,0,0,0.25);
+  border: 1rpx solid rgba(176,141,87,0.2);
+  border-radius: 12rpx;
+}
+.room-card:active { background: rgba(176,141,87,0.12); }
+.room-avatars { display: flex; }
+.room-av {
+  width: 56rpx; height: 56rpx; border-radius: 50%;
+  border: 2rpx solid #b08d57;
+  margin-right: -14rpx;
+  background: #2a2c31;
+}
+.room-meta { flex: 1; margin-left: 28rpx; display: flex; flex-direction: column; }
+.room-code { font-size: 30rpx; color: #d8bd86; font-weight: bold; letter-spacing: 2rpx; }
+.room-count { font-size: 24rpx; color: #8a7a55; margin-top: 4rpx; }
+.room-go { font-size: 44rpx; color: #b08d57; }

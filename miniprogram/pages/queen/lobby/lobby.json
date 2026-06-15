@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "双人桌游",
+  "navigationStyle": "custom",
+  "usingComponents": {},
+  "enablePullDownRefresh": true
+}

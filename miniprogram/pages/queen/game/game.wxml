@@ -1,0 +1,222 @@
+<!-- pages/queen/game/game.wxml -->
+<view class="qpage game-page">
+  <view class="qnav" style="padding-top: {{statusBarHeight}}px">
+    <view class="qnav-back" bindtap="onExit">‹</view>
+    <view class="qnav-title">女王万岁 #{{roomCode}}</view>
+  </view>
+
+  <view wx:if="{{!loaded}}" class="loading">齿轮转动中…</view>
+
+  <view wx:else class="game-body">
+    <!-- 对手声望条 -->
+    <view class="prestige-bar opp-bar">
+      <text class="side-tag">{{oppColor === 'white' ? '白玫瑰' : '黑玫瑰'}}（对手）</text>
+      <view class="tokens">
+        <view class="token p-red {{oppPrestige.r>=3?'done':''}}">威 {{oppPrestige.r}}</view>
+        <view class="token p-yellow {{oppPrestige.y>=3?'done':''}}">富 {{oppPrestige.y}}</view>
+        <view class="token p-blue {{oppPrestige.b>=3?'done':''}}">智 {{oppPrestige.b}}</view>
+      </view>
+      <view class="master-mini">
+        <text class="master-label">谋</text>
+        <view class="mini-tile {{oppMaster.back?'back':''}}">
+          <text wx:if="{{!oppMaster.back}}">{{oppMaster.emoji}}</text>
+          <text wx:else>⚙</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 棋盘：横向数字条，每格上(对手)下(己方) -->
+    <scroll-view scroll-x class="board-scroll">
+      <view class="board">
+        <view wx:for="{{cells}}" wx:key="pos" class="col {{item.isActive?'col-active':''}} {{item.isPrincessPos?'col-princess':''}}"
+          data-pos="{{item.pos}}" bindtap="onCellTap">
+          <!-- 对手牌 -->
+          <view class="tile opp-tile {{item.opp.back?'tile-back':''}} {{item.opp.prestigeCls}}">
+            <block wx:if="{{!item.opp.back}}">
+              <text wx:if="{{item.opp.init}}" class="tile-init">{{item.opp.init}}</text>
+              <text class="tile-emoji">{{item.opp.emoji}}</text>
+              <text class="tile-name">{{item.opp.name}}</text>
+            </block>
+            <view wx:else class="back-face">{{oppColor==='white'?'🌹':'🥀'}}</view>
+          </view>
+
+          <!-- 数字格 -->
+          <view class="num {{item.isActive?'num-active':''}}">{{item.pos}}</view>
+
+          <!-- 己方牌 -->
+          <view class="tile my-tile {{item.mine.back?'tile-back':''}} {{item.mine.peek?'tile-peek':''}} {{item.mine.prestigeCls}} {{swapFirst===item.pos?'tile-selected':''}}">
+            <block wx:if="{{!item.mine.back}}">
+              <text wx:if="{{item.mine.init}}" class="tile-init">{{item.mine.init}}</text>
+              <text class="tile-emoji">{{item.mine.emoji}}</text>
+              <text class="tile-name">{{item.mine.name}}</text>
+              <text wx:if="{{item.mine.peek}}" class="peek-tag">暗</text>
+            </block>
+            <view wx:else class="back-face">{{myColor==='white'?'🌹':'🥀'}}</view>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+
+    <!-- 己方声望条 + 主谋 -->
+    <view class="prestige-bar my-bar">
+      <text class="side-tag">{{myColor === 'white' ? '白玫瑰' : '黑玫瑰'}}（你）</text>
+      <view class="tokens">
+        <view class="token p-red {{myPrestige.r>=3?'done':''}}">威 {{myPrestige.r}}</view>
+        <view class="token p-yellow {{myPrestige.y>=3?'done':''}}">富 {{myPrestige.y}}</view>
+        <view class="token p-blue {{myPrestige.b>=3?'done':''}}">智 {{myPrestige.b}}</view>
+      </view>
+      <view class="master-mini">
+        <text class="master-label">谋</text>
+        <view class="mini-tile {{myMaster.back && !myMaster.role?'back':''}}">
+          <text wx:if="{{myMaster.role}}">{{myMaster.emoji}}</text>
+          <text wx:else>⚙</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 骰子 / 状态 -->
+    <view class="status-bar">
+      <view wx:if="{{dice}}" class="dice-box">
+        <view class="die">{{dice.a}}</view>
+        <view class="die">{{dice.b}}</view>
+        <text class="dice-sum">= {{dice.sum}} → 位置 {{activePosition}}</text>
+      </view>
+      <view wx:else class="turn-hint">
+        {{isMyTurn ? '你的回合' : '对手回合'}}
+      </view>
+      <view class="qnav-spacer" bindtap="onShowRules">  <text class="help-icon">?</text></view>
+    </view>
+
+    <!-- 操作区 -->
+    <view class="action-zone" wx:if="{{!winnerColor}}">
+      <!-- 掷骰 -->
+      <block wx:if="{{phase==='await_roll'}}">
+        <button wx:if="{{isMyTurn}}" class="btn-brass act-btn {{busy?'is-loading':''}}" bindtap="onRoll">🎲 掷骰</button>
+        <view wx:else class="wait-text">等待对手掷骰…</view>
+      </block>
+
+      <!-- reposition -->
+      <block wx:elif="{{phase==='reposition' && isMyTurn}}">
+        <view wx:if="{{canReposition}}" class="repo-tools">
+          <button class="btn-iron repo-btn {{repoMode==='swap'?'active':''}}" bindtap="onRepoSwapMode">交换相邻</button>
+          <button class="btn-iron repo-btn {{repoMode==='master'?'active':''}}" bindtap="onRepoMasterMode">换主谋</button>
+        </view>
+        <view wx:if="{{repoMode==='swap'}}" class="repo-tip">{{swapFirst?('已选位置'+swapFirst+'，再点相邻一张'):'点选第一张牌'}}</view>
+        <view wx:if="{{repoMode==='master'}}" class="repo-tip">点选一张正面角色牌作为新主谋</view>
+        <button class="btn-brass act-btn {{busy?'is-loading':''}}" bindtap="onEndTurn">结束回合</button>
+      </block>
+
+      <block wx:elif="{{phase==='reposition' && !isMyTurn}}">
+        <view class="wait-text">对手布置中…</view>
+      </block>
+
+      <block wx:elif="{{phase==='resolving' && !isMyTurn}}">
+        <view class="wait-text">对手结算中…</view>
+      </block>
+      <block wx:elif="{{phase==='resolving' && isMyTurn && !decision}}">
+        <view class="wait-text">结算中…</view>
+      </block>
+    </view>
+
+    <!-- 操作日志 -->
+    <view class="log-box">
+      <view wx:for="{{log}}" wx:key="index" class="log-line">· {{item}}</view>
+    </view>
+
+    <view class="bottom-actions" wx:if="{{!winnerColor}}">
+      <text class="surrender" bindtap="onSurrender">认输</text>
+    </view>
+  </view>
+
+  <!-- 决策弹层 -->
+  <view wx:if="{{decision}}" class="modal-mask">
+    <view class="modal">
+      <view class="modal-title">{{decision.label}}</view>
+      <!-- 选颜色 -->
+      <view wx:if="{{decision.colorOptions.length}}" class="opt-row">
+        <view wx:for="{{decision.colorOptions}}" wx:key="c" class="opt-color {{item.cls}}"
+          data-c="{{item.c}}" bindtap="onDecideColor">{{item.label}}</view>
+      </view>
+      <!-- 选位置(公主翻牌) -->
+      <view wx:if="{{decision.posOptions.length}}" class="opt-list">
+        <view wx:for="{{decision.posOptions}}" wx:key="pos" class="opt-item"
+          data-pos="{{item.pos}}" bindtap="onDecidePos">位置 {{item.pos}}（{{item.name}}）</view>
+      </view>
+      <!-- 选交换对 -->
+      <view wx:if="{{decision.pairOptions.length}}" class="opt-list">
+        <view wx:for="{{decision.pairOptions}}" wx:key="label" class="opt-item"
+          data-pair="{{item.pair}}" bindtap="onDecidePair">{{item.label}}　{{item.a}}↔{{item.b}}</view>
+      </view>
+      <!-- 跳过 -->
+      <button wx:if="{{decision.optional}}" class="btn-iron skip-btn" bindtap="onDecideSkip">跳过</button>
+    </view>
+  </view>
+
+  <!-- 结算弹层 -->
+  <view wx:if="{{winnerColor}}" class="modal-mask">
+    <view class="modal result-modal">
+      <view class="result-rose">{{winnerColor===myColor?'👑':'🥀'}}</view>
+      <view class="result-text">{{resultText}}</view>
+      <button class="btn-brass" bindtap="onExit" style="width:100%">返回</button>
+    </view>
+  </view>
+
+  <!-- 规则说明弹层 -->
+  <view wx:if="{{showRules}}" class="modal-mask" bindtap="onCloseRules" catchtouchmove="noop">
+    <view class="rules-modal" catchtap="noop">
+      <view class="rules-head">
+        <text class="rules-title">女王万岁 · 游戏规则</text>
+        <text class="rules-close" bindtap="onCloseRules">✕</text>
+      </view>
+      <scroll-view scroll-y enable-flex class="rules-scroll">
+        <view class="rules-sec">
+          <view class="rules-h">🎯 游戏目标</view>
+          <view class="rules-p">两大帮派（白玫瑰 / 黑玫瑰）争夺女王之位。达成以下任一条件即获胜：</view>
+          <view class="rules-li">· <text class="hl">声望胜利</text>：同时集齐 红、黄、蓝 三色声望各 ≥ 3 个。</view>
+          <view class="rules-li">· <text class="hl">斩首胜利</text>：将对方的公主翻成背面。</view>
+        </view>
+
+        <view class="rules-sec">
+          <view class="rules-h">🎲 回合流程</view>
+          <view class="rules-li">1. <text class="hl">掷骰</text>：掷两颗骰子求和，得到 2–12，对应数字条上的同号位置。</view>
+          <view class="rules-li">2. <text class="hl">激活</text>：该位置上<text class="hl">双方的牌同时</text>受影响——
+            <view class="rules-sub">· 两张都背面 → 都翻开，不触发能力。</view>
+            <view class="rules-sub">· 两张都正面 → 都触发能力，按先攻值（左上数字）从小到大结算。</view>
+            <view class="rules-sub">· 一正一背 → 先结算正面牌能力，再翻开背面牌。</view>
+            <view class="rules-sub">· 两张先攻值相同 → 都不触发。</view>
+          </view>
+          <view class="rules-li">3. <text class="hl">布置</text>（回合末，可选）：交换己方相邻两张牌，或更换主谋。<text class="dim">先手玩家第一回合不可布置。</text></view>
+          <view class="rules-li">4. <text class="hl">结束</text>：把骰子交给对手。</view>
+        </view>
+
+        <view class="rules-sec">
+          <view class="rules-h">🃏 角色能力（先攻值 = 左上数字）</view>
+          <view class="rules-role"><text class="r-emoji">🎯</text><text class="r-name">1 狙击手</text><text class="r-desc">+1红；翻面敌方<text class="hl">点对称</text>位置的牌（以7为中心：2↔12,3↔11…）</text></view>
+          <view class="rules-role"><text class="r-emoji">🗡️</text><text class="r-name">2 刺客</text><text class="r-desc">+1红；翻面敌方<text class="hl">同位置</text>的牌</text></view>
+          <view class="rules-role"><text class="r-emoji">🎭</text><text class="r-name">3 阴谋家</text><text class="r-desc">+1黄；使对手退回 1 个声望</text></view>
+          <view class="rules-role"><text class="r-emoji">🎩</text><text class="r-name">4 贵族</text><text class="r-desc">+1黄；再获得任意 1 个声望</text></view>
+          <view class="rules-role"><text class="r-emoji">🎲</text><text class="r-name">5 赌徒</text><text class="r-desc">从对手夺取 2 个声望（不足则取其全部）</text></view>
+          <view class="rules-role"><text class="r-emoji">👸</text><text class="r-name">6 公主</text><text class="r-desc">翻开己方 1 张背面牌；自身被翻面即败北</text></view>
+          <view class="rules-role"><text class="r-emoji">✈️</text><text class="r-name">7 飞行员</text><text class="r-desc">+1蓝；交换己方相邻牌，最多 2 次</text></view>
+          <view class="rules-role"><text class="r-emoji">🎻</text><text class="r-name">8 艺人</text><text class="r-desc">+1蓝；给对手 1 个声望，再从对手拿 1 个</text></view>
+          <view class="rules-role"><text class="r-emoji">🕵️</text><text class="r-name">9 间谍</text><text class="r-desc">+1蓝；交换对手相邻牌，最多 2 次</text></view>
+          <view class="rules-role"><text class="r-emoji">🪖</text><text class="r-name">新兵×2</text><text class="r-desc">激活时翻开主谋，并<text class="hl">继承主谋</text>的能力与先攻值</text></view>
+          <view class="rules-role"><text class="r-emoji">🛡️</text><text class="r-name">卫兵</text><text class="r-desc">正面时，<text class="hl">保护相邻</text>的牌不被翻面（不保护自己）</text></view>
+        </view>
+
+        <view class="rules-sec">
+          <view class="rules-h">💎 声望规则</view>
+          <view class="rules-li">· 红=威慑、黄=财富、蓝=智略，各 6 个供应。</view>
+          <view class="rules-li">· 某色集齐 <text class="hl">6 个立即全部退回</text>供应（树大招风）。</view>
+          <view class="rules-li">· 供应耗尽则拿不到；从对手处拿但对手没有，则不拿。</view>
+        </view>
+
+        <view class="rules-sec">
+          <view class="rules-h">🧩 主谋（Master）</view>
+          <view class="rules-li">开局每方暗置 1 名主谋于侧边。新兵激活时会翻开并继承其能力。赌徒、公主、新兵、卫兵不可担任主谋。</view>
+        </view>
+        <view class="rules-foot">点击空白处关闭</view>
+      </scroll-view>
+    </view>
+  </view>
+</view>

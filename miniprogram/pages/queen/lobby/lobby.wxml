@@ -1,0 +1,60 @@
+<!-- pages/queen/lobby/lobby.wxml -->
+<view class="qpage">
+  <!-- 自定义导航 -->
+  <view class="qnav" style="padding-top: {{statusBarHeight}}px">
+    <view class="qnav-back" bindtap="onBack">‹</view>
+    <view class="qnav-title">女王万岁</view>
+    <view class="qnav-spacer"></view>
+  </view>
+
+  <scroll-view scroll-y class="qbody">
+    <!-- 标题区 -->
+    <view class="hero">
+      <view class="hero-rose">🥀</view>
+      <view class="hero-title">LONG LIVE THE QUEEN</view>
+      <view class="hero-sub">双人 · 帮派暗战 · 蒸汽都市 Axia</view>
+      <view class="hero-line"></view>
+      <view class="hero-desc">白玫瑰与黑玫瑰，两大犯罪辛迪加争夺女王之位。集齐三色声望，或翻面敌方公主，方能称王。</view>
+    </view>
+
+    <!-- 创建房间 -->
+    <view class="panel">
+      <view class="panel-label">开局</view>
+      <button class="btn-brass btn-create {{creating ? 'is-loading' : ''}}" bindtap="onCreate">
+        <text class="btn-gear">⚙</text> 创建房间
+      </button>
+    </view>
+
+    <!-- 输入房间号加入 -->
+    <view class="panel">
+      <view class="panel-label">加入</view>
+      <view class="code-row">
+        <input class="code-input" type="number" maxlength="6" placeholder="输入6位房间号"
+          placeholder-class="code-ph" value="{{roomCode}}" bindinput="onCodeInput" />
+        <button class="btn-iron {{joining ? 'is-loading' : ''}}" bindtap="onJoinByCode">加入</button>
+      </view>
+    </view>
+
+    <!-- 公开房间列表 -->
+    <view class="panel">
+      <view class="panel-label">公开房间</view>
+      <view wx:if="{{roomsLoading && rooms.length === 0}}" class="rooms-empty">加载中…</view>
+      <view wx:elif="{{rooms.length === 0}}" class="rooms-empty">暂无公开房间，创建一个吧</view>
+      <view wx:else class="rooms-list">
+        <view wx:for="{{rooms}}" wx:key="roomId" class="room-card"
+          data-roomid="{{item.roomId}}" data-roomcode="{{item.roomCode}}" bindtap="onJoinByList">
+          <view class="room-avatars">
+            <image wx:for="{{item.players}}" wx:for-item="p" wx:key="index" class="room-av" src="{{p.avatar}}" mode="aspectFill" />
+          </view>
+          <view class="room-meta">
+            <text class="room-code">#{{item.roomCode}}</text>
+            <text class="room-count">{{item.playerCount}}/2</text>
+          </view>
+          <view class="room-go">›</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="safe-pad"></view>
+  </scroll-view>
+</view>
