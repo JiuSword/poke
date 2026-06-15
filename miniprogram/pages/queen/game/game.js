@@ -72,6 +72,7 @@ Page({
     if (this._privRetry) { clearTimeout(this._privRetry); this._privRetry = null }
     if (this.pubKey) watchManager.unwatch(this.pubKey)
     if (this.privKey) watchManager.unwatch(this.privKey)
+    if (this._diceAudio) { try { this._diceAudio.destroy() } catch (e) {} this._diceAudio = null }
     this.stopHeartbeat()
   },
 
@@ -246,6 +247,7 @@ Page({
   // ── 掷骰 ──
   async onRoll() {
     if (this.data.busy) return
+    this.playDiceSound()
     this.setData({ busy: true })
     try {
       await queenGame('rollDice', { roomId: this.data.roomId })
@@ -254,6 +256,19 @@ Page({
     } finally {
       this.setData({ busy: false })
     }
+  },
+
+  // 掷骰音效（复用同一个 audio context）
+  playDiceSound() {
+    try {
+      if (!this._diceAudio) {
+        this._diceAudio = wx.createInnerAudioContext()
+        this._diceAudio.src = '/audios/roll-of-dice.mp3'
+        this._diceAudio.volume = 1.0
+      }
+      this._diceAudio.stop()
+      this._diceAudio.play()
+    } catch (e) {}
   },
 
   // ── 决策提交 ──
