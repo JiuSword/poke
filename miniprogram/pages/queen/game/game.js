@@ -176,6 +176,9 @@ Page({
       resultText = view.winnerColor === myColor ? '胜利！你统一了帮派' : '失败，对手称王'
     }
 
+    // 对手掷骰时通过 watch 回调触发音效（自己掷骰已在 onRoll 里即时播放，不重复）
+    if (view.dice && !this.data.dice && !isMyTurn) this.playDiceSound()
+
     this.setData({
       loaded: true,
       phase: view.phase,
@@ -247,7 +250,7 @@ Page({
   // ── 掷骰 ──
   async onRoll() {
     if (this.data.busy) return
-    this.playDiceSound()
+    this.playDiceSound()   // 自己掷骰立即播放，无需等 watch 回调
     this.setData({ busy: true })
     try {
       await queenGame('rollDice', { roomId: this.data.roomId })
