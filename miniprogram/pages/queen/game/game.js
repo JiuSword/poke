@@ -31,6 +31,7 @@ Page({
 
     // 决策弹层
     decision: null,          // { type, label, optional, colorOptions[], posOptions[], pairOptions[], id }
+    decisionMinimized: false, // 决策弹层是否最小化
 
     // reposition 交互
     repoMode: '',            // '' | 'swap' | 'master'
@@ -179,6 +180,11 @@ Page({
     // 对手掷骰时通过 watch 回调触发音效（自己掷骰已在 onRoll 里即时播放，不重复）
     if (view.dice && !this.data.dice && !isMyTurn) this.playDiceSound()
 
+    // 新决策出现时自动展开（重置最小化）
+    const newDecisionId = decision && decision.id
+    const oldDecisionId = this.data.decision && this.data.decision.id
+    const decisionChanged = newDecisionId !== oldDecisionId
+
     this.setData({
       loaded: true,
       phase: view.phase,
@@ -194,6 +200,7 @@ Page({
       winnerColor: view.winnerColor,
       resultText,
       decision,
+      decisionMinimized: decisionChanged ? false : this.data.decisionMinimized,
       canReposition: view.phase === 'reposition' && isMyTurn && view.canReposition,
       oppColor,
     })
@@ -272,6 +279,14 @@ Page({
       this._diceAudio.stop()
       this._diceAudio.play()
     } catch (e) {}
+  },
+
+  // ── 决策弹层最小化/恢复 ──
+  onMinimizeDecision() {
+    this.setData({ decisionMinimized: true })
+  },
+  onRestoreDecision() {
+    this.setData({ decisionMinimized: false })
   },
 
   // ── 决策提交 ──

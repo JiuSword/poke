@@ -129,9 +129,14 @@
   </view>
 
   <!-- 决策弹层 -->
-  <view wx:if="{{decision}}" class="modal-mask">
+  <view wx:if="{{decision && !decisionMinimized}}" class="modal-mask">
     <view class="modal">
-      <view class="modal-title">{{decision.label}}</view>
+      <view class="modal-header">
+        <view class="modal-title">{{decision.label}}</view>
+        <view class="modal-minimize-btn" catchtap="onMinimizeDecision">
+          <text class="minimize-icon">—</text>
+        </view>
+      </view>
       <!-- 选颜色 -->
       <view wx:if="{{decision.colorOptions.length}}" class="opt-row">
         <view wx:for="{{decision.colorOptions}}" wx:key="c" class="opt-color {{item.cls}}"
@@ -150,6 +155,13 @@
       <!-- 跳过 -->
       <button wx:if="{{decision.optional}}" class="btn-iron skip-btn" bindtap="onDecideSkip">跳过</button>
     </view>
+  </view>
+
+  <!-- 决策悬浮气泡（最小化状态） -->
+  <view wx:if="{{decision && decisionMinimized}}" class="decision-bubble" catchtap="onRestoreDecision">
+    <text class="bubble-icon">⚔️</text>
+    <text class="bubble-text">{{decision.label}}</text>
+    <text class="bubble-expand">展开</text>
   </view>
 
   <!-- 结算弹层 -->
