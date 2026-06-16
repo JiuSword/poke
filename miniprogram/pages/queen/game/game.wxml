@@ -119,9 +119,9 @@
     </view>
 
     <!-- 操作日志 -->
-    <view class="log-box">
+    <scroll-view scroll-y class="log-box">
       <view wx:for="{{log}}" wx:key="index" class="log-line">· {{item}}</view>
-    </view>
+    </scroll-view>
 
     <view class="bottom-actions" wx:if="{{!winnerColor}}">
       <text class="surrender" bindtap="onSurrender">认输</text>

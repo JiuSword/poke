@@ -196,7 +196,7 @@ Page({
       oppPrestige: view.prestige[oppColor],
       myMaster,
       oppMaster,
-      log: (view.log || []).slice(-8).reverse(),
+      log: (view.log || []).slice(-30).reverse(),
       winnerColor: view.winnerColor,
       resultText,
       decision,
